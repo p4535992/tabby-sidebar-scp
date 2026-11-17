@@ -67,25 +67,33 @@ function parsePort(value) {
  * into a string passed to exec(). The remote path is quoted for scp -O's remote
  * POSIX shell, while host/user are restricted to non-shell metacharacters.
  */
-function buildScpCommand(input) {
-  if (!input || (input.direction !== 'upload' && input.direction !== 'download')) {
-    throw new ScpValidationError('Direction must be upload or download');
+function validateConnection(input) {
+  if (!input || typeof input !== 'object') {
+    throw new ScpValidationError('Connection is required');
   }
   const host = stringField(input.host, 'Host');
   if (!(HOST_NAME.test(host) || IPV6_HOST.test(host)) || host.length > 253) {
     throw new ScpValidationError('Host must be a safe SSH host or config alias');
   }
-
-  const user = input.username == null || input.username === ''
+  const username = input.username == null || input.username === ''
     ? '' : stringField(input.username, 'Username');
-  if (user && !USER_NAME.test(user)) {
+  if (username && !USER_NAME.test(username)) {
     throw new ScpValidationError('Username contains unsupported characters');
   }
-
   const port = parsePort(input.port);
+  const identityFile = input.identityFile
+    ? resolveLocalPath(input.identityFile, 'Identity file') : null;
+  return { host, username, port, identityFile, endpoint: `${username ? `${username}@` : ''}${host}` };
+}
+
+function buildScpCommand(input) {
+  if (!input || (input.direction !== 'upload' && input.direction !== 'download')) {
+    throw new ScpValidationError('Direction must be upload or download');
+  }
+  const { endpoint, port, identityFile } = validateConnection(input);
   const localPath = resolveLocalPath(input.localPath, 'Local path');
   const remotePath = stringField(input.remotePath, 'Remote path');
-  const remoteSpec = `${user ? `${user}@` : ''}${host}:${quoteRemotePath(remotePath)}`;
+  const remoteSpec = `${endpoint}:${quoteRemotePath(remotePath)}`;
   const args = [
     '-O', // force legacy SCP protocol, never silently fall back to SFTP
     '-B', // disable interactive prompts in the GUI
@@ -95,9 +103,7 @@ function buildScpCommand(input) {
   ];
   if (port != null) args.push('-P', String(port));
 
-  if (input.identityFile) {
-    args.push('-i', resolveLocalPath(input.identityFile, 'Identity file'));
-  }
+  if (identityFile) args.push('-i', identityFile);
   if (input.recursive) args.push('-r');
   if (input.preserveTimes) args.push('-p');
   if (input.compress) args.push('-C');
@@ -209,4 +215,6 @@ module.exports = {
   parsePort,
   quoteRemotePath,
   startScpTransfer,
+  validateConnection,
+  resolveLocalPath,
 };

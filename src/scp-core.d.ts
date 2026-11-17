@@ -30,3 +30,7 @@ export function startScpTransfer(
   input: ScpTransferOptions,
   onOutput?: (chunk: string, stream: 'stdout' | 'stderr') => void,
 ): ScpTask;
+
+export function validateConnection(input: ScpTransferOptions): { host: string; username: string; port: number | null; identityFile: string | null; endpoint: string };
+export function resolveLocalPath(value: string, fieldName: string): string;
+export function quoteRemotePath(value: string): string;
