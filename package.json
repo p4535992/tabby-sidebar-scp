@@ -1,7 +1,7 @@
 {
-  "name": "tabby-better-sidebar-extension-scp",
+  "name": "tabby-sidebar-scp",
   "version": "0.1.0",
-  "description": "Independent SCP transfer dialog for Tabby, compatible with Better Sidebar",
+  "description": "Standalone legacy SCP transfer dialog for Tabby, compatible with Better Sidebar",
   "keywords": [
     "tabby-plugin",
     "tabby",
@@ -13,11 +13,11 @@
   "main": "dist/index.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/p4535992/tabby-better-sidebar-extension-scp.git"
+    "url": "https://github.com/p4535992/tabby-sidebar-scp.git"
   },
-  "homepage": "https://github.com/p4535992/tabby-better-sidebar-extension-scp#readme",
+  "homepage": "https://github.com/p4535992/tabby-sidebar-scp#readme",
   "bugs": {
-    "url": "https://github.com/p4535992/tabby-better-sidebar-extension-scp/issues"
+    "url": "https://github.com/p4535992/tabby-sidebar-scp/issues"
   },
   "files": [
     "dist",
