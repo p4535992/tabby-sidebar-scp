@@ -46,7 +46,7 @@ function quoteRemotePath(value) {
   if (!remotePath.startsWith('/')) {
     throw new ScpValidationError('Remote path must be absolute (start with /)');
   }
-  return `'${remotePath.replace(/'/g, `'\''`)}'`;
+  return `'${remotePath.replace(/'/g, `'\\''`)}'`;
 }
 
 function parsePort(value) {
