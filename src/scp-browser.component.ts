@@ -84,15 +84,15 @@ type Side = 'local' | 'remote'
     `,
     styles: [`
       :host { display: flex; flex-direction: column; min-height: 0; min-width: 260px; height: 100%; overflow: hidden; font-size: 12px; color: inherit; }
-      :host(.scp-standalone) { flex: 0 0 330px; width: 330px; max-width: 45vw; border-right: 1px solid #8885; background: var(--bs-body-bg, var(--theme-bg, #202124)); }
-      :host(.scp-embedded) { flex: 1 1 auto; min-height: 0; width: 100%; }
+      :host(.scp-standalone) { flex: 0 0 330px; width: 330px; max-width: 45vw; border-right: 1px solid #8885; background: var(--bs-body-bg, var(--theme-bg, transparent)); }
+      :host(.scp-embedded) { flex: 1 1 auto; min-height: 0; width: 100%; height: auto; }
       :host(.scp-embedded) .scp-own-header { display: none; }
       .scp-own-header { display: flex; padding: .5rem; border-bottom: 1px solid #8885; }
       .scp-own-tab { font-weight: 600; padding: .25rem .5rem; border-bottom: 2px solid currentColor; }
       .scp-body { display: flex; flex-direction: column; gap: .5rem; flex: 1; min-height: 0; padding: .5rem; overflow: auto; }
       .scp-connection { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .35rem; }
       .scp-connection label { min-width: 0; margin: 0; }
-      .scp-browser-panes { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .35rem; min-height: 150px; flex: 1 1 auto; }
+      .scp-browser-panes { display: grid; grid-template-columns: 1fr; grid-template-rows: repeat(2, minmax(120px, 1fr)); gap: .35rem; min-height: 250px; flex: 1 1 auto; }
       .scp-browser-pane { display: flex; flex-direction: column; border: 1px solid #8885; border-radius: 4px; overflow: hidden; min-width: 0; min-height: 120px; }
       .scp-pane-title { display: flex; align-items: center; justify-content: space-between; padding: .2rem .35rem; font-weight: 600; border-bottom: 1px solid #8885; }
       .scp-pane-title button, .scp-path button { background: none; border: 0; color: inherit; cursor: pointer; }
@@ -108,7 +108,6 @@ type Side = 'local' | 'remote'
       .scp-error { color: #ef6767; overflow-wrap: anywhere; }
       .scp-output { max-height: 110px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; border: 1px solid #8885; padding: .3rem; }
       .scp-hint { opacity: .75; font-size: 11px; margin: .1rem; }
-      @media (max-width: 640px) { .scp-browser-panes { grid-template-columns: 1fr; } }
     `],
 })
 export class ScpBrowserComponent implements OnInit, OnDestroy {
