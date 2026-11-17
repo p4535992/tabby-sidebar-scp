@@ -38,7 +38,7 @@ function buildSshCommand(input, command) {
 function buildListCommand(input, directory) {
   const quotedDirectory = quoteRemotePath(directory);
   // GNU find's %f and NUL delimiters retain spaces, apostrophes and non-ASCII names.
-  const command = String.raw`LC_ALL=C find -- ${quotedDirectory} -mindepth 1 -maxdepth 1 -printf '%y\\t%f\\0'`;
+  const command = String.raw`LC_ALL=C find -- ${quotedDirectory} -mindepth 1 -maxdepth 1 -printf '%y\t%f\0'`;
   return buildSshCommand(input, command);
 }
 

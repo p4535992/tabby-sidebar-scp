@@ -34,7 +34,7 @@ test('remote directory listing uses quoted POSIX path and strict SSH options', (
   assert.ok(command.args.includes('StrictHostKeyChecking=yes'));
   assert.deepEqual(command.args.slice(-2), [
     'alice@example-ssh',
-    String.raw`LC_ALL=C find -- '/data/it'\\''s a space' -mindepth 1 -maxdepth 1 -printf '%y\\t%f\\0'`,
+    String.raw`LC_ALL=C find -- '/data/it'\\''s a space' -mindepth 1 -maxdepth 1 -printf '%y\t%f\0'`,
   ]);
   assert.throws(() => buildListCommand(host, 'relative/path'), /absolute/);
   assert.throws(() => buildListCommand({host: '-bad'}, '/tmp'), /Host/);
