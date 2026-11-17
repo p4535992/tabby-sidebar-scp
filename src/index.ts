@@ -1,37 +1,17 @@
 import { CommonModule } from '@angular/common'
-import { NgModule, Injectable } from '@angular/core'
+import { NgModule } from '@angular/core'
 import { FormsModule } from '@angular/forms'
-import { NgbModal, NgbModalModule } from '@ng-bootstrap/ng-bootstrap'
-import { ToolbarButtonProvider } from 'tabby-core'
+import { NgbModalModule } from '@ng-bootstrap/ng-bootstrap'
+import TabbyCoreModule from 'tabby-core'
+import { ScpBrowserComponent } from './scp-browser.component'
 import { ScpTransferDialogComponent } from './scp-dialog.component'
+import { ScpMountService } from './mount.service'
 
-/**
- * Independent plugin entry point. Better Sidebar need not be installed.
- * Do not patch Better Sidebar's private views/DOM.
- */
-@Injectable()
-export class ScpToolbarButtonProvider {
-    constructor(private modal: NgbModal) {}
-
-    provide() {
-        return [{
-            icon: 'fa fa-exchange-alt',
-            title: 'SCP file transfer',
-            click: () => this.modal.open(ScpTransferDialogComponent, {
-                size: 'lg',
-                backdrop: 'static',
-                keyboard: false,
-                centered: true,
-            }),
-        }]
-    }
-}
-
+/** Independent Tabby plugin; Better Sidebar is optional and never imported. */
 @NgModule({
-    imports: [CommonModule, FormsModule, NgbModalModule],
-    declarations: [ScpTransferDialogComponent],
-    providers: [
-        { provide: ToolbarButtonProvider, useClass: ScpToolbarButtonProvider, multi: true },
-    ],
+    imports: [CommonModule, FormsModule, NgbModalModule, TabbyCoreModule],
+    declarations: [ScpBrowserComponent, ScpTransferDialogComponent],
 })
-export default class TabbyScpExtensionModule {}
+export default class TabbyScpModule {
+    constructor(mount: ScpMountService) { void mount }
+}
