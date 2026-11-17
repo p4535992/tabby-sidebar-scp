@@ -1,14 +1,19 @@
 {
   "name": "tabby-sidebar-scp",
-  "version": "0.1.0",
-  "description": "Standalone legacy SCP transfer dialog for Tabby, compatible with Better Sidebar",
+  "version": "0.2.0",
+  "description": "Standalone SCP file browser for Tabby with optional Better Sidebar tab",
   "keywords": [
     "tabby-plugin",
     "tabby",
     "scp",
     "ssh",
     "transfer",
-    "better-sidebar"
+    "better-sidebar",
+    "file-browser",
+    "drag-and-drop",
+    "file-manager",
+    "ssh-client",
+    "sidebar"
   ],
   "main": "dist/index.js",
   "repository": {
