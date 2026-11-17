@@ -1,93 +1,113 @@
-# Developer guide / Guida allo sviluppo
+# Development and integration
 
-## Architecture
+This repository is a standalone Tabby plugin; **Better Sidebar is optional**.
+The SCP engine does not import Better Sidebar's source code or its npm package.
 
-This repository is an independent **Tabby SCP companion plugin**. It does not
-modify `tabby-better-sidebar`, replace Tabby's native sidebar, or patch
-another plugin's private Angular components/DOM.
+## Integration decision
 
-The first release exposes a Tabby toolbar action opening a transfer dialog.
-Better Sidebar's `BetterPanelContribution:<id>` contract concerns shared
-settings pages, **not** file-browser component injection. A native-looking
-in-sidebar SCP panel will require a documented integration API from the
-maintainer or a separate compatibility layer, neither of which exists here.
+Better Sidebar uses its own Angular sidebar, mounted in Tabby's
+`.window.h-100.d-flex` window row. The profile/SFTP view bar is
+`.sidebar-plus-content .view-mode-bar`. It does not provide a stable API for
+external sidebar panels. The `BetterPanelContribution:<id>` interface is
+only for co-hosting **settings pages**, not for adding SFTP/SCP views.
 
-## Code layout
+`ScpMountService` chooses a placement when Tabby is ready and responds to
+subsequent DOM changes:
 
-| Path | Description |
-|---|---|
-| `src/index.ts` | Angular module and Tabby toolbar button |
-| `src/scp-dialog.component.ts` | Transfer UI, confirmation, logs and cancellation |
-| `src/scp-core.js` | Node/OpenSSH argv and child-process lifecycle |
-| `src/scp-core.d.ts` | TypeScript declarations for the core |
-| `test/scp-core.test.js` | Unit tests, no external SSH needed |
+1. **Better Sidebar view bar found**: insert a third `SCP` anchor with the
+   existing `view-mode-tab` class. Append the Angular SCP browser component
+   to the sidebar container. When SCP is activated, temporarily hide siblings
+   while recording their old display values. Clicking Profiles/SFTP restores
+   them; no Better Sidebar components are destroyed or patched.
+2. **No compatible view bar**: mount SCP's Angular browser independently as
+   a standalone sidebar in Tabby's window row, with its own SCP header.
+3. **Placement changes while running**: reparent the same Angular component
+   and preserve its browser state.
 
-## Local checks
+This is an **optional compatibility shim based on DOM selectors**, not a public
+API and not guaranteed across future Better Sidebar/Tabby versions. Its
+behavior needs manual testing. If the structure changes but still matches the
+selectors, the shim may require an update.
+
+## Operations and process model
+
+- Local file listings use Node `fs.promises.readdir`.
+- Remote listings use noninteractive local `ssh`, running a fixed GNU `find`
+  command with NUL-separated records. Remote directories require absolute POSIX
+  paths; remote GNU `find` is a requirement.
+- Remote rename/move uses noninteractive `ssh` to run a fixed
+  `test ! -e && test ! -L && mv --` command. Local rename/move uses Node
+  `fs.promises.rename` and an existence precheck. These checks can race;
+  they are not atomic no-clobber guarantees.
+- Copy between local and remote uses **legacy SCP** (`scp -O`), never silently
+  replaces SCP with SFTP.
+- Dragging entries between panes copies; dragging into a directory within a
+  pane moves. **A cross-pane copy never deletes its source.**
+- There is explicit user confirmation before transfers and moves.
+- All spawned commands use `shell: false` on the local machine.
+- SSH host-key checking stays strict and authentication is noninteractive.
+- No Tabby saved credentials or already-open SSH sessions are accessed.
+- `ScpBrowserComponent` owns the transfer task and cancels it on destruction.
+
+## Sources
+
+| File | Role |
+| --- | --- |
+| `src/index.ts` | Angular plugin module |
+| `src/mount.service.ts` | Optional Better Sidebar adapter plus standalone placement |
+| `src/scp-browser.component.ts` | Two-pane file UI, drag/drop, transfers and moves |
+| `src/scp-browser.js` / `.d.ts` | Local/remote browsing, SSH movement and TypeScript types |
+| `src/scp-core.js` / `.d.ts` | SCP argument construction, path validation, transfer lifecycle |
+| `src/scp-dialog.component.ts` | Advanced transfer dialog |
+| `test/*.test.js` | Mocked backend unit tests |
+
+## Build and unit tests
 
 ```bash
-node --version      # Node 18+ is recommended
 npm install --ignore-scripts
 npm test
 npm run build
 ```
 
-`npm test` exercises the SCP engine with mocked processes/filesystem.
-Passing tests **does not prove** that the UI loads in a specific version of
-Tabby or that a remote host supports legacy SCP.
+Only the Node.js backend unit tests are runnable without installing Tabby.
+They use a fake SSH/SCP child process and temporary local directories. The
+Angular component and compatibility shim still need actual application QA.
 
-The bundled Angular and Tabby SDK packages are build-time dependencies.
-Webpack externalizes them so Tabby's own modules are used at runtime.
-`dist/index.js` is the plugin entry point.
+## Install an unpublished local build
 
-## Install an unpublished build in Tabby
-
-1. Run `npm run build`.
-2. Close Tabby completely.
-3. Install or link the plugin folder under Tabby's plugins `node_modules`.
-4. Fully restart Tabby (reloading only the window may not reload plugins).
-5. Verify the SCP toolbar action appears and opens the dialog.
-
-Typical plugin directories (verify for your Tabby installation):
-- Windows: `%APPDATA%\tabby\plugins\node_modules`
-- Linux: `~/.config/tabby/plugins/node_modules`
-- macOS: `~/.config/tabby/plugins/node_modules`
-
-Another option for a local package is `npm pack` (build first) and install
-the resulting `.tgz` locally. This does not publish to npm.
+1. Build the plugin using the commands above.
+2. Close Tabby **completely**.
+3. Link or install the package in Tabby's plugins directory
+   (`node_modules/tabby-sidebar-scp`). Common locations:
+   - Windows: `%APPDATA%\tabby\plugins\node_modules`
+   - Linux/macOS: `~/.config/tabby/plugins/node_modules`
+4. Fully restart Tabby; reloading its window is not sufficient.
+5. Verify the SCP panel appears in the appropriate location.
 
 ## Manual acceptance checklist
 
-- [ ] Install alongside **unmodified** `tabby-better-sidebar`; its
-      profile tree, SFTP panel and settings still work.
-- [ ] Verify the toolbar button and modal load without console exceptions.
-- [ ] Use a host alias with User/Port from `~/.ssh/config`.
-- [ ] Upload a disposable file and verify checksum/content on the server.
-- [ ] Download a disposable file and verify checksum/content locally.
-- [ ] Upload and download a directory with `-r`.
-- [ ] Verify remote paths with spaces and an apostrophe.
-- [ ] Test cancellation during a large copy.
-- [ ] Test invalid ports, missing local files/keys and an unknown host key.
-- [ ] Check that errors are visible and never silently ignored.
-- [ ] Restart Tabby and repeat.
+- [ ] Install **without Better Sidebar**: a standalone SCP sidebar with header
+      appears, and no Better Sidebar dependency error occurs.
+- [ ] Install **with Better Sidebar enabled**: `Profiles | SFTP | SCP` appears.
+- [ ] Switch repeatedly between Profiles, SFTP and SCP without losing the
+      Better Sidebar tree, active sessions, transfers or SFTP view state.
+- [ ] Disable/re-enable Better Sidebar at runtime and confirm that SCP remains
+      usable and does not duplicate its header tab.
+- [ ] Try Better Sidebar's right-docked SFTP placement.
+- [ ] Enter an SSH-config alias, a configured key and a custom port.
+- [ ] Browse local/remote folders, including spaces and apostrophes.
+- [ ] Upload and download disposable files and folders; verify checksums.
+- [ ] Drag a file across panes to copy, and onto a folder in the same pane
+      to move; verify the source is only removed for an explicit move.
+- [ ] Attempt an existing destination and confirm the warning/behavior.
+- [ ] Cancel an active transfer and verify the process terminates.
+- [ ] Test missing `scp`, missing `ssh`, no GNU `find`, unknown host key,
+      rejected login, and invalid paths.
+- [ ] Test with a real Tabby release on each supported desktop OS.
 
-## Security boundaries and limitations
+## Compatibility limitations
 
-- Native `scp` is spawned with an argument array; no local shell.
-- `-O` explicitly requests **legacy SCP**, not modern SFTP-based scp.
-- `-B`, `BatchMode=yes` and strict host key checking disable
-  hidden prompts and unexpected host-key acceptance.
-- Remote absolute paths are quoted for the POSIX shell expected by SCP.
-- Username and host values reject shell metacharacters and option injection.
-- User confirmation is required for each transfer; existing files can be
-  overwritten by SCP. No collision detection is offered.
-- Saved Tabby credentials and active SSH sessions are not read.
-- An SCP server must support legacy SCP; SFTP-only servers will fail.
-- Windows paths, compatibility with a real Tabby build and third-party plugins
-  have **not** yet been tested end to end.
-
-## Future enhancement
-
-If Better Sidebar introduces an official extension point for new sidebar
-panels, add an *optional adapter* gated by API version. The standalone dialog
-should remain available even when Better Sidebar is not installed. Never
-depend on internal selectors or undocumented component instances.
+Do **not** advertise this as a stable Better Sidebar integration until the
+manual checklist passes. The DOM adapter is a best-effort bridge. For a stable
+extension, Better Sidebar's maintainer would need to expose a documented
+public view provider. The independent SCP sidebar will remain as fallback.
