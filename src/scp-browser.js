@@ -54,6 +54,12 @@ function buildMoveCommand(input, from, to) {
   return buildSshCommand(input, command);
 }
 
+function buildMkdirCommand(input, directory) {
+  const destination = quoteRemotePath(directory);
+  // Non-recursive mkdir refuses collisions; never overwrite another file.
+  return buildSshCommand(input, `mkdir -- ${destination}`);
+}
+
 function runSsh(input, command, dependencies = {}) {
   const start = dependencies.spawn || spawn;
   const child = start(command.executable, command.args, {
@@ -150,6 +156,16 @@ async function listRemoteDirectory(input, directory, dependencies) {
   return { directory, entries: parseRemoteEntries(output, directory) };
 }
 
+async function createRemoteDirectory(input, directory, dependencies) {
+  const command = buildMkdirCommand(input, directory);
+  await runSsh(input, command, dependencies);
+}
+
+async function createLocalDirectory(directory, fileSystem = fs) {
+  const resolved = resolveLocalPath(directory, 'New local directory');
+  await fileSystem.promises.mkdir(resolved, { recursive: false });
+}
+
 async function moveRemoteEntry(input, source, destination, dependencies) {
   const command = buildMoveCommand(input, source, destination);
   await runSsh(input, command, dependencies);
@@ -172,7 +188,8 @@ async function moveLocalEntry(source, destination, fileSystem = fs) {
 }
 
 module.exports = {
-  buildSshCommand, buildListCommand, buildMoveCommand,
+  buildSshCommand, buildListCommand, buildMoveCommand, buildMkdirCommand,
   listLocalDirectory, listRemoteDirectory, moveLocalEntry, moveRemoteEntry,
+  createLocalDirectory, createRemoteDirectory,
   parseRemoteEntries, joinRemoteDirectory, parentRemoteDirectory,
 };

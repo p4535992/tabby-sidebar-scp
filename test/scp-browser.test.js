@@ -91,3 +91,25 @@ test('local browser lists files and moving refuses overwrite', async () => {
     assert.equal(fs.readFileSync(path.join(dir, 'new name.txt'), 'utf8'), 'data');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('new directory command uses safely quoted remote path', () => {
+  const browser = require('../src/scp-browser');
+  const command = browser.buildMkdirCommand({ host: 'server', username: 'u' }, "/home/u/it's here");
+  assert.equal(command.executable, 'ssh');
+  assert.equal(command.args.at(-1).startsWith('mkdir -- '), true);
+  assert.ok(command.args.includes('-T'));
+  assert.throws(() => browser.buildMkdirCommand({ host: 'server' }, 'relative'), /absolute/);
+});
+
+test('new local directory refuses overwrites', async () => {
+  const browser = require('../src/scp-browser');
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'scp-folder-'));
+  try {
+    const destination = path.join(parent, 'new folder');
+    await browser.createLocalDirectory(destination);
+    assert.ok(fs.statSync(destination).isDirectory());
+    await assert.rejects(browser.createLocalDirectory(destination), /EEXIST/);
+  } finally {
+    fs.rmSync(parent, { recursive: true, force: true });
+  }
+});

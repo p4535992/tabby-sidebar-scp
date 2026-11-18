@@ -16,3 +16,6 @@ export function listLocalDirectory(directory: string): Promise<{ directory: stri
 export function listRemoteDirectory(input: ScpTransferOptions, directory: string): Promise<{ directory: string; entries: ScpFileEntry[] }>;
 export function moveLocalEntry(source: string, destination: string): Promise<void>;
 export function moveRemoteEntry(input: ScpTransferOptions, source: string, destination: string): Promise<void>;
+
+export function createRemoteDirectory(input: ScpTransferOptions, directory: string): Promise<void>;
+export function createLocalDirectory(directory: string): Promise<void>;
