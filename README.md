@@ -11,6 +11,32 @@ its repository or requires a fork.
 > undocumented DOM selectors. Test with disposable files before production use;
 > manual drag-and-drop and cross-platform UI validation remain necessary.
 
+## SFTP-style toolbar (current main branch)
+
+The SCP browser uses the **same toolbar order as Better Sidebar's SFTP panel**:
+favorite folders (star), edit remote path (pencil), refresh, filter, create
+remote folder, upload file, and upload folder. It also provides breadcrumb
+navigation, an up-level row, name/size/date sorting, and right-click actions.
+
+- **Star:** save or remove the current remote directory; choose a saved path
+  later. Favorites persist in this Tabby installation and are isolated by
+  SSH host, username and port.
+- **Pencil / breadcrumb:** double-click the breadcrumb or press the pencil
+  to type an absolute remote path.
+- **New folder:** create a real remote directory over SSH (not a placeholder).
+- **Upload file / folder:** use Tabby's Electron native file/directory picker.
+  If that picker is unavailable, switch to Local view to choose the source.
+- **Filter / view options:** filter is initially collapsed; Local and Split
+  remain available for copying and dragging files.
+- **SSH settings:** local OpenSSH authentication is separate from Tabby's
+  SFTP session, so SSH agent/keys and trusted host keys must be configured.
+
+**Version note:** these toolbar improvements are on `main` **after the
+`0.1.0` release**; the existing `0.1.0` download contains the preceding
+remote-first interface. A future numbered release will include the updates.
+The Better Sidebar integration continues to use an optional DOM adapter,
+not a supported integration API.
+
 ## Where the SCP panel appears
 
 | Environment | What you see |
@@ -140,11 +166,12 @@ are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Screenshots
 
-### Redesigned SCP — remote-first standalone view
+### Earlier remote-first standalone view (release 0.1.0)
 
-This is a **real GitHub Actions screenshot** of the new SFTP-inspired SCP UI
+This is a **real GitHub Actions screenshot** of the earlier remote-first SCP UI
 in Tabby 1.0.238, captured by the standalone smoke test. The image is cropped
-to the Tabby window only; the UI itself was not altered.
+to the Tabby window only; the UI itself was not altered. The toolbar has
+since been updated on `main` to match Better Sidebar's SFTP buttons.
 
 ![New remote-first SCP sidebar running standalone in Tabby](docs/screenshots/after-standalone.png)
 
@@ -162,7 +189,7 @@ for historical comparison, **not as screenshots of the new layout**.
 
 ![Previous standalone SCP sidebar](docs/screenshots/before-standalone.png)
 
-Both redesigned GUI modes passed the [GitHub Actions VM tests](https://github.com/p4535992/tabby-sidebar-scp/actions/runs/44299827012).
+The earlier remote-first GUI passed the [GitHub Actions VM tests](https://github.com/p4535992/tabby-sidebar-scp/actions/runs/44299827012).
 The combined-mode screenshot and diagnostic logs are available in that run's
 artifacts. The standalone screenshot above is committed to the repository.
 
