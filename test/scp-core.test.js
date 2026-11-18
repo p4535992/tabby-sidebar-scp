@@ -110,9 +110,9 @@ test('checks local sources and missing download destination parent', () => {
     checkLocalPaths(uploadFile, buildScpCommand(uploadFile));
     const uploadDir = input({localPath: sourceDir});
     assert.throws(() => checkLocalPaths(uploadDir, buildScpCommand(uploadDir)), /recursive/);
-    const download = input({direction: 'download', localPath: path.join(tmp,'download.txt')});
+    const download = input({direction: 'download', remotePath: '/tmp/file.txt', localPath: path.join(tmp,'download.txt')});
     checkLocalPaths(download, buildScpCommand(download));
-    const badDownload = input({direction: 'download', localPath: path.join(tmp,'missing','file.txt')});
+    const badDownload = input({direction: 'download', remotePath: '/tmp/file.txt', localPath: path.join(tmp,'missing','file.txt')});
     assert.throws(() => checkLocalPaths(badDownload, buildScpCommand(badDownload)), /parent/);
   } finally {
     fs.rmSync(tmp, {recursive: true, force: true});
