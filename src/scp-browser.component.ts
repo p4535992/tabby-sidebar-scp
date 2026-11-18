@@ -407,12 +407,22 @@ export class ScpBrowserComponent implements OnInit, OnDestroy {
         }
     }
 
+    private crumbsForPath = ''
+    private cachedCrumbs: { name: string; path: string }[] = []
+
     get remoteCrumbs(): { name: string; path: string }[] {
-        const parts = this.remoteDirectory.split('/').filter(Boolean)
-        return parts.map((name, index) => ({
-            name,
-            path: '/' + parts.slice(0, index + 1).join('/'),
-        }))
+        // Keep *ngFor's object identities stable across Angular change-detection.
+        // Recreating objects on every pass churns the DOM, which triggers the
+        // Better Sidebar mutation observer and can lock up the Electron renderer.
+        if (this.crumbsForPath !== this.remoteDirectory) {
+            const parts = this.remoteDirectory.split('/').filter(Boolean)
+            this.cachedCrumbs = parts.map((name, index) => ({
+                name,
+                path: '/' + parts.slice(0, index + 1).join('/'),
+            }))
+            this.crumbsForPath = this.remoteDirectory
+        }
+        return this.cachedCrumbs
     }
 
     get favorites(): string[] {
