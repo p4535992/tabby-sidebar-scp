@@ -3,6 +3,12 @@ name: Release (numeric tag)
 # Automatically publish only after the main-branch Tabby VM smoke tests pass.
 # Manual dispatch supports future numeric releases. No v-prefixed tags.
 on:
+  # Retry or amend the release recipe itself without requiring another GUI VM
+  # run when only release infrastructure changes.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/release.yml'
   workflow_run:
     workflows:
       - Tabby SCP - Ubuntu VM smoke tests
@@ -27,7 +33,8 @@ jobs:
   release:
     name: Test, package and publish numeric release
     if: >-
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      ((github.event_name == 'workflow_dispatch' || github.event_name == 'push') &&
+       github.ref == 'refs/heads/main') ||
       (github.event_name == 'workflow_run' &&
        github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.head_branch == 'main' &&
@@ -112,8 +119,12 @@ jobs:
           npm pack --ignore-scripts --pack-destination release
           archive="release/tabby-sidebar-scp-$VERSION.tgz"
           test -s "$archive"
-          tar -tzf "$archive" | grep -qx 'package/dist/index.js'
-          tar -tzf "$archive" | grep -qx 'package/package.json'
+          # Do not pipe tar into grep -q under pipefail: grep exits early and
+          # tar can fail with SIGPIPE even when the archive is valid.
+          tar -tzf "$archive" > release/contents.txt
+          grep -qx 'package/dist/index.js' release/contents.txt
+          grep -qx 'package/package.json' release/contents.txt
+          rm release/contents.txt
           (cd release && sha256sum "tabby-sidebar-scp-$VERSION.tgz" > SHA256SUMS.txt)
 
       - name: Create GitHub tag and release (exact version; no v)
