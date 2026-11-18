@@ -5,6 +5,13 @@ install it alongside [Better Sidebar](https://github.com/TooMuhtsh/tabby-better-
 **Better Sidebar is optional:** this plugin does not depend on it and never modifies
 its repository or requires a fork.
 
+### SCP next to Better Sidebar — SFTP-style toolbar (current `main`)
+
+![Actual SCP tab with the SFTP-style toolbar beside Profiles and SFTP](docs/screenshots/after-sftp-toolbar.webp)
+
+*Real screenshot from [GitHub Actions run #44311878384](https://github.com/p4535992/tabby-sidebar-scp/actions/runs/44311878384), using Tabby 1.0.238 and Better Sidebar 1.0.11. Cropped to the toolbar and file-list header; no UI controls were edited. The test VM has no remote SSH host selected, so this screenshot does not demonstrate a populated remote file listing.*
+
+
 > **Early release 0.1.0:** the SSH/SCP engine and redesigned SFTP-inspired
 > interface passed GitHub Actions VM tests with Tabby 1.0.238, both standalone
 > and with Better Sidebar 1.0.11. The optional Better Sidebar adapter uses
@@ -67,7 +74,7 @@ contract registers settings pages, not sidebar file-browser tabs.
 
 **Remote is the default SCP view**, styled after Better Sidebar's SFTP file
 browser. A compact header shows the SSH connection, toolbar, editable path,
-file filter and sortable **Name / Size / Modified** columns. Expand the SSH
+file filter and sortable **Name / Size / Date / Perm.** columns. Expand the SSH
 settings when choosing a host, user, port or identity key.
 
 Choose **Remote**, **Local**, or **Split** to switch between the remote browser,
@@ -165,6 +172,20 @@ are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 - `test/` — mocked unit tests (no real SSH access)
 
 ## Screenshots
+
+### Current SFTP-style SCP panel with Better Sidebar
+
+The screenshot below is from the **new seven-button toolbar**, tested with the
+Tabby GUI running on the Ubuntu VM. It shows the SCP tab alongside Profiles and
+SFTP, the path breadcrumb, Favorite folders, path editing, Refresh, Filter,
+New remote folder, Upload file and Upload folder, plus the sortable
+**Name / Size / Date / Perm.** column headers.
+
+![Current SCP toolbar next to Better Sidebar SFTP](docs/screenshots/after-sftp-toolbar.webp)
+
+Captured from [successful GitHub Actions run #44311878384](https://github.com/p4535992/tabby-sidebar-scp/actions/runs/44311878384).
+The [combined-mode artifact](https://github.com/p4535992/tabby-sidebar-scp/actions/runs/44311878384)
+also contains the un-cropped application screenshot and renderer diagnostics.
 
 ### Earlier remote-first standalone view (release 0.1.0)
 

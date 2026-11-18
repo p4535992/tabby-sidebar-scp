@@ -79,10 +79,14 @@ Tabby runtime; if it is unavailable, use Local view instead. SCP drag-out to
 the operating system and every advanced SFTP context-menu action have **not**
 been implemented; do not claim complete feature parity.
 
-The screenshot currently stored as `screenshots/after-standalone.png` predates
-this toolbar update and is retained as a real image of the earlier remote-first
-interface. New screenshots should be taken from the successful VM jobs for
-the toolbar implementation, never relabeled from older test runs.
+The real current toolbar screenshot is
+![SFTP-style SCP toolbar inside Better Sidebar](screenshots/after-sftp-toolbar.webp)
+
+It was taken by [the successful combined GitHub Actions GUI job](https://github.com/p4535992/tabby-sidebar-scp/actions/runs/44311878384)
+(Tabby 1.0.238 with Better Sidebar 1.0.11), then cropped to the toolbar.
+No UI elements were generated or altered. The VM has no remote SSH host selected.
+The older `screenshots/after-standalone.png` predates this toolbar update and
+is correctly labeled as an earlier remote-first implementation.
 
 ## Technical boundaries
 
@@ -102,16 +106,17 @@ file-editing, bookmarks or native OS drag-out behavior is implied by the UI.
 The files under `docs/screenshots/before-*` are **real screenshots from the
 prior layout** on disposable GitHub Actions Ubuntu VMs, captured before this
 redesign. They are **before** references, not screenshots of the new interface.
-New screenshots should be captured after running the existing Xvfb/Electron
-GitHub Actions smoke tests against a commit containing this redesign.
+The new toolbar screenshot was captured after the updated Xvfb/Electron
+GitHub Actions smoke tests passed, with the seven expected controls visible.
 
 ## Validation
 
-The frontend source passes TypeScript checking with local framework interface
-stubs and the browser backend passes six Node.js tests. These are local checks
-only; they do not establish visual parity or prove the Angular template runs in
-Tabby. Run the existing GitHub Actions VM workflow and inspect both standalone
-and combined screenshots before claiming UI verification.
+The [GitHub Actions test run #44311878384](https://github.com/p4535992/tabby-sidebar-scp/actions/runs/44311878384)
+passed the real SSH/SCP loopback tests plus Tabby GUI checks in both standalone
+and Better Sidebar combined modes. The combined CDP assertions checked all seven
+toolbar buttons, the default remote-only view, the permissions column, and
+switching into and out of SCP. This is not a full interactive test of file-dialog
+selection, favorite persistence or drag-and-drop, which remain to be tested manually.
 
 
 ### Before redesign (real screenshots)
@@ -131,6 +136,7 @@ Tabby application window (no UI elements were modified):
 
 ![Redesigned remote-first SCP standalone panel](screenshots/after-standalone.png)
 
-The combined Better Sidebar layout is independently tested by the other VM
-job. Only publish that image after the combined GUI assertions pass on the
-redesigned revision.
+The more recent combined Better Sidebar screenshot (current SFTP-style toolbar)
+is shown above as `screenshots/after-sftp-toolbar.webp`. The image is a
+cropped capture of a successful live Tabby GUI VM test. Earlier images remain
+for comparison only.
