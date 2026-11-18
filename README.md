@@ -140,7 +140,7 @@ for historical comparison, **not as screenshots of the new layout**.
 ![Previous standalone SCP sidebar](docs/screenshots/before-standalone.png)
 
 Screenshots of the redesigned UI will be published after new VM GUI tests
-pass on the redesign revision. The [Actions runs](../../actions/workflows/tabby-vm.yml)
+pass on the redesign revision. The [Actions runs](https://github.com/p4535992/tabby-sidebar-scp/actions/workflows/tabby-vm.yml)
 also retain downloadable artifacts and diagnostic logs.
 
 ## GitHub Actions test VM
