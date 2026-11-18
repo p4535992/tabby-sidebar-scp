@@ -41,6 +41,8 @@ selectors, the shim may require an update.
   they are not atomic no-clobber guarantees.
 - Copy between local and remote uses **legacy SCP** (`scp -O`), never silently
   replaces SCP with SFTP.
+- The default SCP view shows one remote file list, SFTP-style, with filter,
+  sorting and Name / Size / Modified columns. Switch to Local or Split for transfers.
 - Dragging entries between panes copies; dragging into a directory within a
   pane moves. **A cross-pane copy never deletes its source.**
 - There is explicit user confirmation before transfers and moves.
@@ -55,7 +57,7 @@ selectors, the shim may require an update.
 | --- | --- |
 | `src/index.ts` | Angular plugin module |
 | `src/mount.service.ts` | Optional Better Sidebar adapter plus standalone placement |
-| `src/scp-browser.component.ts` | Two-pane file UI, drag/drop, transfers and moves |
+| `src/scp-browser.component.ts` | SFTP-inspired remote-first, local and split views, drag/drop, transfers and moves |
 | `src/scp-browser.js` / `.d.ts` | Local/remote browsing, SSH movement and TypeScript types |
 | `src/scp-core.js` / `.d.ts` | SCP argument construction, path validation, transfer lifecycle |
 | `src/scp-dialog.component.ts` | Advanced transfer dialog |
@@ -95,6 +97,8 @@ Angular component and compatibility shim still need actual application QA.
       usable and does not duplicate its header tab.
 - [ ] Try Better Sidebar's right-docked SFTP placement.
 - [ ] Enter an SSH-config alias, a configured key and a custom port.
+- [ ] Verify remote-first UI, path bar, columns, hidden files, filter, sort,
+      context menu, collapsed connection settings and Local/Split controls.
 - [ ] Browse local/remote folders, including spaces and apostrophes.
 - [ ] Upload and download disposable files and folders; verify checksums.
 - [ ] Drag a file across panes to copy, and onto a folder in the same pane
@@ -111,3 +115,12 @@ Do **not** advertise this as a stable Better Sidebar integration until the
 manual checklist passes. The DOM adapter is a best-effort bridge. For a stable
 extension, Better Sidebar's maintainer would need to expose a documented
 public view provider. The independent SCP sidebar will remain as fallback.
+
+## UI consistency with Better Sidebar
+
+The SCP browser uses its own component but follows the Better Sidebar SFTP
+layout: header, directory toolbar, filter and file list. Remote is the default;
+Local and Split remain available for transfers. See [UI consistency](UI_PARITY.md).
+Older GitHub Actions screenshots are stored under `docs/screenshots/before-*`
+and are explicitly not screenshots of the new layout. New screenshots are
+produced by the GitHub VM jobs and must be checked before publication.

@@ -5,9 +5,10 @@ install it alongside [Better Sidebar](https://github.com/TooMuhtsh/tabby-better-
 **Better Sidebar is optional:** this plugin does not depend on it and never modifies
 its repository or requires a fork.
 
-> **Development status:** compatibility adapter and Tabby UI are not yet tested
-> inside a real Tabby installation. The SSH/SCP engines have mocked unit tests;
-> please test with a disposable SSH host before transferring important files.
+> **Development status:** the SSH/SCP backend and the previous two-pane GUI
+> passed GitHub Actions tests with Tabby 1.0.238. The redesigned SFTP-inspired
+> interface still requires new VM screenshots and GUI verification. Test on a
+> disposable SSH host before transferring important files.
 
 ## Where the SCP panel appears
 
@@ -35,32 +36,31 @@ to standalone mode does not affect the SCP engine.
 This plugin does **not** use `BetterPanelContribution:<id>`, because that
 contract registers settings pages, not sidebar file-browser tabs.
 
-### In italiano
-
-- **Con Better Sidebar attivo:** nella barra `Profiles | SFTP` compare anche
-  `SCP`. Selezionandolo, il browser SCP prende temporaneamente lo spazio
-  della sidebar; le altre viste tornano quando selezioni i loro tab.
-- **Senza Better Sidebar (o con la sidebar disattivata):** SCP monta una sidebar
-  autonoma con la sua intestazione, senza richiedere alcun altro plugin.
-- **Nota sulla compatibilità:** l'aggancio alla barra di Better Sidebar
-  avviene tramite selettori dell'interfaccia, non tramite un'API pubblica
-  stabile. Va verificato sulle versioni di Tabby e Better Sidebar usate.
-
 ## File browser and operations
 
-Two panes display **Local** and **Remote** files. Set the SSH host or alias,
-username, port (optional), and optional private key, then refresh the Remote
-pane. Double-click a folder to open it; the arrow moves to its parent.
+**Remote is the default SCP view**, styled after Better Sidebar's SFTP file
+browser. A compact header shows the SSH connection, toolbar, editable path,
+file filter and sortable **Name / Size / Modified** columns. Expand the SSH
+settings when choosing a host, user, port or identity key.
 
-- **Copy →** uploads the selected local file/folder with legacy `scp -O`.
-- **← Copy** downloads the selected remote file/folder.
-- **Drag between panes** performs the same copy operation, optionally into a
-  specific destination folder.
-- **Drag onto a folder within the same pane** moves a file/folder there.
-- **Move local / Move remote** rename a selected entry within its folder.
-- **Paths…** opens the advanced transfer dialog for explicit absolute paths,
-  recursive mode, compression, and timestamp preservation.
-- Transfers and moves ask for confirmation. A running SCP copy can be cancelled.
+Choose **Remote**, **Local**, or **Split** to switch between the remote browser,
+local browser and two-pane transfer view. The same SCP interface is used
+standalone and when Better Sidebar supplies the `Profiles | SFTP | SCP` tabs.
+
+- **Remote (default):** browse remote directories, with folder navigation,
+  hidden-file toggle, filtering and sort controls.
+- **Local:** inspect local files and select uploads.
+- **Split:** drag between panes to copy or onto a folder in the same pane to move.
+- **Upload / Download:** copy the selected file or directory with legacy
+  `scp -O`. An upload without a local selection opens the Local view.
+- **Rename:** move or rename the selected file within its filesystem, after
+  confirmation. **Right-click** on an entry for open/copy/rename actions.
+- **Advanced transfer:** explicit source/destination paths, recursion,
+  compression and timestamp preservation.
+
+Every transfer and move asks for confirmation. A running SCP transfer can be
+cancelled. See [SFTP-inspired UI design](docs/UI_PARITY.md) for the UI behavior
+and integration boundaries.
 
 **Copy is not move:** copying between local and remote never deletes the
 source. Moves *within* the local or remote filesystem use local `rename` or
@@ -109,11 +109,29 @@ acceptance checklist are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 - `src/index.ts` — independent Tabby plugin entry point
 - `src/mount.service.ts` — optional Better Sidebar tab and standalone fallback
-- `src/scp-browser.component.ts` — two-pane file browser and drag/drop
+- `src/scp-browser.component.ts` — remote-first SFTP-inspired file browser
 - `src/scp-browser.js` — local listing and SSH remote listing/moves
 - `src/scp-core.js` — validated legacy SCP transfers and cancellation
 - `src/scp-dialog.component.ts` — advanced transfer dialog
 - `test/` — mocked unit tests (no real SSH access)
+
+## Screenshots
+
+The images below are **real captures from the previous two-pane interface**,
+made by GitHub Actions before the SFTP-inspired redesign. They are provided
+for historical comparison, **not as screenshots of the new layout**.
+
+**Previous interface with Better Sidebar:**
+
+![Previous SCP tab next to Better Sidebar](docs/screenshots/before-combined.png)
+
+**Previous standalone SCP sidebar:**
+
+![Previous standalone SCP sidebar](docs/screenshots/before-standalone.png)
+
+Screenshots of the redesigned UI will be published after new VM GUI tests
+pass on the redesign revision. The [Actions runs](../../actions/workflows/tabby-vm.yml)
+also retain downloadable artifacts and diagnostic logs.
 
 ## GitHub Actions test VM
 
