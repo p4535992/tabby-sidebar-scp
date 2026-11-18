@@ -1,0 +1,146 @@
+name: Tabby SCP - Ubuntu VM smoke tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tabby-vm.yml'
+      - 'ci/**'
+      - 'src/**'
+      - 'test/**'
+      - 'package.json'
+      - 'tsconfig.json'
+      - 'webpack.config.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tabby-scp-vm-${{ github.ref }
+  cancel-in-progress: true
+
+jobs:
+  scp-loopback:
+    name: Unit tests + real SSH/SCP loopback
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out this repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install build dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Build Tabby plugin
+        run: npm run build
+
+      - name: Start disposable loopback SSH server
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y openssh-server openssh-client
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          ssh-keygen -q -t ed25519 -N '' -f "$HOME/.ssh/tabby-ci-key"
+          cat "$HOME/.ssh/tabby-ci-key.pub" >> "$HOME/.ssh/authorized_keys"
+          chmod 600 "$HOME/.ssh/authorized_keys" "$HOME/.ssh/tabby-ci-key"
+          sudo mkdir -p /run/sshd
+          sudo ssh-keygen -A
+          sudo /usr/sbin/sshd -p 2222 \
+            -o PasswordAuthentication=no \
+            -o PubkeyAuthentication=yes \
+            -o PermitRootLogin=no \
+            -o AllowTcpForwarding=no \
+            -o X11Forwarding=no
+          for attempt in {1..15}; do
+            if ssh-keyscan -T 2 -p 2222 127.0.0.1 >> "$HOME/.ssh/known_hosts" 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          chmod 600 "$HOME/.ssh/known_hosts"
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -i "$HOME/.ssh/tabby-ci-key" -p 2222 \
+            127.0.0.1 'printf "SSH loopback ready\n"'
+
+      - name: Real upload/download and remote file operations
+        run: node ci/scp-loopback-test.cjs
+
+  tabby-gui:
+    name: Tabby GUI / ${{ matrix.mode }
+    needs: scp-loopback
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [standalone, combined]
+    steps:
+      - name: Check out this repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install plugin build dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Build SCP plugin
+        run: npm run build
+
+      - name: Install Xvfb and Tabby
+        shell: bash
+        env:
+          TABBY_VERSION: '1.0.238'
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            xvfb x11-utils xauth openbox scrot dbus-x11 ca-certificates curl
+          curl --fail --location --retry 3 --connect-timeout 30 \
+            --max-time 600 --output /tmp/tabby-x64.deb \
+            "https://github.com/Eugeny/tabby/releases/download/v$TABBY_VERSION/tabby-$TABBY_VERSION-linux-x64.deb"
+          test "$(stat -c%s /tmp/tabby-x64.deb)" -gt 5000000
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y /tmp/tabby-x64.deb
+
+      - name: Add Better Sidebar only in combined mode
+        if: matrix.mode == 'combined'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.config/tabby/plugins"
+          npm install --prefix "$HOME/.config/tabby/plugins" \
+            --no-save --ignore-scripts --no-audit --no-fund \
+            tabby-better-sidebar@1.0.11
+          test -s "$HOME/.config/tabby/plugins/node_modules/tabby-better-sidebar/dist/index.js"
+
+      - name: Launch real Tabby and assert SCP UI
+        shell: bash
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }
+        run: bash ci/gui-smoke.sh "${{ matrix.mode }"
+
+      - name: Upload screenshot and GUI diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tabby-scp-${{ matrix.mode }-${{ github.run_id }
+          path: artifacts/
+          if-no-files-found: warn
+          retention-days: 7
