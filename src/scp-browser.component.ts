@@ -28,6 +28,11 @@ type Side = 'local' | 'remote'
           <i class="fa fa-fw fas fa-server" aria-hidden="true"></i>
           <span class="scp-session-name" [title]="host || 'Select an SSH host'">{{host || 'Select SSH host'}}</span>
           <span class="scp-protocol-label">SCP</span>
+          <button type="button" class="btn btn-link btn-sm scp-tool"
+            [attr.aria-pressed]="showViewOptions" (click)="showViewOptions = !showViewOptions"
+            title="Local and split file views" aria-label="Local and split file views">
+            <i class="fa fa-fw fas fa-columns" aria-hidden="true"></i>
+          </button>
           <button type="button" class="btn btn-link btn-sm scp-tool scp-connection-button"
             [attr.aria-pressed]="showConnection" (click)="showConnection = !showConnection"
             title="SSH connection settings" aria-label="SSH connection settings">
@@ -114,7 +119,7 @@ type Side = 'local' | 'remote'
           </div>
         </div>
 
-        <div class="scp-view-options" aria-label="File browser views">
+        <div class="scp-view-options" *ngIf="showViewOptions" aria-label="File browser views">
           <div class="scp-view-modes" role="group" aria-label="Choose file view">
             <button type="button" class="scp-mode-button" [class.active]="viewMode === 'remote'"
               [attr.aria-pressed]="viewMode === 'remote'" (click)="setViewMode('remote')" title="Remote files, like SFTP">Remote</button>
@@ -143,14 +148,15 @@ type Side = 'local' | 'remote'
             <div class="scp-file-header">
               <button type="button" (click)="setSort('name')">Name <i *ngIf="sortKey === 'name'" class="fas fa-sort" aria-hidden="true"></i></button>
               <button type="button" (click)="setSort('size')">Size</button>
-              <button type="button" (click)="setSort('date')">Modified</button>
+              <button type="button" (click)="setSort('date')">Date</button>
+              <span class="scp-file-perm">Perm.</span>
             </div>
             <div class="scp-error" role="alert" *ngIf="remoteError">{{remoteError}}</div>
             <div class="scp-file-list" role="listbox" aria-label="Remote entries" [attr.aria-busy]="loadingRemote">
               <button type="button" *ngIf="remoteDirectory !== '/'" class="scp-file-row scp-go-up"
                 (click)="remoteUp()" title="Go up one level" aria-label="Go up one level">
                 <span class="scp-file-name"><i class="fa fa-fw fas fa-level-up-alt" aria-hidden="true"></i> <span>..</span></span>
-                <span></span><span></span>
+                <span></span><span></span><span></span>
               </button>
               <button type="button" class="scp-file-row" *ngFor="let entry of displayedRemoteEntries"
                 [class.scp-selected]="selectedRemote?.path === entry.path" [attr.aria-selected]="selectedRemote?.path === entry.path"
@@ -161,6 +167,7 @@ type Side = 'local' | 'remote'
                 <span class="scp-file-name"><i [class]="entryIcon(entry)" aria-hidden="true"></i> <span>{{entry.name}}</span></span>
                 <span class="scp-file-size">{{sizeText(entry.size)}}</span>
                 <span class="scp-file-date">{{dateText(entry.modifiedAt)}}</span>
+                <span class="scp-file-perm">{{entry.mode || "—"}}</span>
               </button>
               <p class="scp-empty" *ngIf="!loadingRemote && !displayedRemoteEntries.length">
                 {{!host ? 'Set an SSH host using the settings button, then refresh.' : remoteEntries.length ? 'No matching files' : 'No files yet — refresh to load.'}}
@@ -183,7 +190,8 @@ type Side = 'local' | 'remote'
             <div class="scp-file-header">
               <button type="button" (click)="setSort('name')">Name <i *ngIf="sortKey === 'name'" class="fas fa-sort" aria-hidden="true"></i></button>
               <button type="button" (click)="setSort('size')">Size</button>
-              <button type="button" (click)="setSort('date')">Modified</button>
+              <button type="button" (click)="setSort('date')">Date</button>
+              <span class="scp-file-perm">Perm.</span>
             </div>
             <div class="scp-error" role="alert" *ngIf="localError">{{localError}}</div>
             <div class="scp-file-list" role="listbox" aria-label="Local entries" [attr.aria-busy]="loadingLocal">
@@ -196,6 +204,7 @@ type Side = 'local' | 'remote'
                 <span class="scp-file-name"><i [class]="entryIcon(entry)" aria-hidden="true"></i> <span>{{entry.name}}</span></span>
                 <span class="scp-file-size">{{sizeText(entry.size)}}</span>
                 <span class="scp-file-date">{{dateText(entry.modifiedAt)}}</span>
+                <span class="scp-file-perm">{{entry.mode || "—"}}</span>
               </button>
               <p class="scp-empty" *ngIf="!loadingLocal && !displayedLocalEntries.length">{{localEntries.length ? 'No matching files' : 'No files in this directory'}}</p>
             </div>
@@ -203,7 +212,7 @@ type Side = 'local' | 'remote'
         </div>
 
         <!-- The same compact footer for either view; actions follow selection. -->
-        <div class="scp-command-bar" aria-label="File actions">
+        <div class="scp-command-bar" *ngIf="viewMode !== 'remote' || showViewOptions" aria-label="File actions">
           <button type="button" class="scp-command-button" (click)="requestUpload()" [disabled]="busy || !host"
             title="Copy selected local file to remote directory"><i class="fas fa-upload" aria-hidden="true"></i> Upload</button>
           <button type="button" class="scp-command-button" (click)="requestDownload()" [disabled]="busy || !selectedRemote || !host"
@@ -327,7 +336,7 @@ type Side = 'local' | 'remote'
       .scp-filter { padding: .15rem .25rem; border: 0; border-bottom: 1px solid var(--theme-secondary, #7773);
         border-radius: 0; }
       .scp-browser-pane { border: 0; border-radius: 0; }
-      .scp-file-header, .scp-file-row { grid-template-columns: minmax(0,1fr) 58px 70px; }
+      .scp-file-header, .scp-file-row { grid-template-columns: minmax(0,1fr) 48px 72px 40px; }
       .scp-file-header { position: sticky; top: 0; z-index: 2; background: var(--theme-bg, #222);
         color: var(--theme-primary, #64aaf5); font-weight: 600; border-bottom: 2px solid var(--theme-primary, #64aaf5); }
       .scp-file-header button { font-size: .75rem; opacity: 1; }
@@ -335,7 +344,8 @@ type Side = 'local' | 'remote'
       .scp-file-row:nth-child(even) { background: rgba(128,128,128,.06); }
       .scp-file-row:hover { background: var(--theme-secondary, #8884); }
       .scp-file-row.scp-selected { background: color-mix(in srgb, var(--theme-primary, #64aaf5) 40%, transparent); }
-      .scp-file-size, .scp-file-date { font-size: .72rem; }
+      .scp-file-size, .scp-file-date, .scp-file-perm { font-size: .72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .scp-file-perm { opacity: .76; text-align: right; padding-right: .15rem; }
       .scp-go-up { opacity: .65; }
       .scp-command-bar { padding: 4px 2px; }
       .scp-command-button { border: 0; padding: 4px 5px; font-size: .72rem; }
@@ -347,6 +357,7 @@ export class ScpBrowserComponent implements OnInit, OnDestroy {
     viewMode: 'remote' | 'local' | 'split' = 'remote'
     showConnection = false
     showFilter = false
+    showViewOptions = false
     favoritesMenuOpen = false
     editingRemotePath: string | null = null
     showHidden = true
@@ -585,6 +596,7 @@ export class ScpBrowserComponent implements OnInit, OnDestroy {
 
     setViewMode(mode: 'remote' | 'local' | 'split'): void {
         this.viewMode = mode
+        this.showViewOptions = mode !== 'remote'
         this.activeSide = mode === 'local' ? 'local' : 'remote'
         this.closeContextMenu()
     }
