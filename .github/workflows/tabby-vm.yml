@@ -80,7 +80,6 @@ jobs:
 
   tabby-gui:
     name: Tabby GUI / ${{ matrix.mode }}
-    needs: scp-loopback
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     strategy:
