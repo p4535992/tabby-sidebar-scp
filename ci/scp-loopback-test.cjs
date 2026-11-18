@@ -16,7 +16,7 @@ async function transfer(options) {
     const chunks = [];
     const task = startScpTransfer(options, (text, stream) => chunks.push([stream, text]));
     const result = await task.completed;
-    assert.equal(result.ok, true, 'SCP operation failed: ' + (result.error || JSON.stringify(chunks)));
+    assert.equal(result.ok, true, 'SCP operation failed: ' + result.error + '\nOpenSSH output: ' + JSON.stringify(chunks));
 }
 
 async function main() {
