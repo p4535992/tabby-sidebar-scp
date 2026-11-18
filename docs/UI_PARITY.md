@@ -53,6 +53,37 @@ independent; no Better Sidebar files or internal Angular components are imported
   Copying between local and remote keeps the original; it does not perform a
   destructive cross-host move.
 
+## SFTP toolbar parity implemented on main
+
+The following controls were checked against the public Better Sidebar SFTP
+template (`src/components/sftpBrowser.component.pug` and its stylesheet):
+
+| Better Sidebar SFTP control | SCP equivalent |
+| --- | --- |
+| Breadcrumb / path edit | Remote path crumbs with inline editing |
+| Star / Favorite folders | Persisted SCP remote favorites, scoped per SSH endpoint |
+| Refresh | Reload the current remote directory over SSH |
+| Filter icon | Toggle the on-demand filename filter |
+| New remote folder | Non-recursive `mkdir --` via the local SSH client |
+| Upload file | Native Electron file picker, then explicit SCP upload |
+| Upload folder | Native Electron directory picker, then recursive SCP upload |
+| Sortable columns / parent row | Remote file table and a `..` up-level row |
+
+This adapts the **interface conventions**, not Better Sidebar's Angular SFTP
+component, which depends on Tabby's SFTP session APIs. SCP remains independently
+installable, and uses local SSH keys/agent credentials rather than passwords
+saved in Tabby.
+
+Native file dialogs depend on `@electron/remote` being exposed by the installed
+Tabby runtime; if it is unavailable, use Local view instead. SCP drag-out to
+the operating system and every advanced SFTP context-menu action have **not**
+been implemented; do not claim complete feature parity.
+
+The screenshot currently stored as `screenshots/after-standalone.png` predates
+this toolbar update and is retained as a real image of the earlier remote-first
+interface. New screenshots should be taken from the successful VM jobs for
+the toolbar implementation, never relabeled from older test runs.
+
 ## Technical boundaries
 
 This is an **SFTP-inspired interface**, not the original Better Sidebar SFTP
