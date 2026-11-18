@@ -117,6 +117,16 @@ acceptance checklist are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Screenshots
 
+### Redesigned SCP — remote-first standalone view
+
+This is a **real GitHub Actions screenshot** of the new SFTP-inspired SCP UI
+in Tabby 1.0.238, captured by the standalone smoke test. The image is cropped
+to the Tabby window only; the UI itself was not altered.
+
+![New remote-first SCP sidebar running standalone in Tabby](docs/screenshots/after-standalone.png)
+
+### Previous two-pane layout (for comparison)
+
 The images below are **real captures from the previous two-pane interface**,
 made by GitHub Actions before the SFTP-inspired redesign. They are provided
 for historical comparison, **not as screenshots of the new layout**.

@@ -94,6 +94,12 @@ as results from the new SFTP-inspired layout.
 
 ### After redesign
 
-The GitHub Actions VM smoke tests will create fresh screenshots in their
-artifacts. Only publish them here after the GUI jobs pass on the redesigned
-source revision.
+The standalone layout passed the GitHub Actions Tabby/Electron smoke test on
+the redesigned source. This screenshot is a **real VM capture**, cropped to the
+Tabby application window (no UI elements were modified):
+
+![Redesigned remote-first SCP standalone panel](screenshots/after-standalone.png)
+
+The combined Better Sidebar layout is independently tested by the other VM
+job. Only publish that image after the combined GUI assertions pass on the
+redesigned revision.
