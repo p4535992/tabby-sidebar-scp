@@ -48,7 +48,21 @@ const stateExpression = String.raw`(() => {
     const own = document.querySelector('tabby-scp-browser.scp-standalone');
     const sidebar = document.querySelector('.sidebar-plus-content .view-mode-bar');
     const tab = document.querySelector('[data-tabby-scp-tab]');
+    const toolbarButtons = Array.from(document.querySelectorAll('tabby-scp-browser .scp-toolbar [aria-label]'))
+        .map(button => button.getAttribute('aria-label'));
+    const requiredButtons = [
+        'Favorite folders', 'Edit remote path', 'Refresh remote files',
+        'Filter the list', 'New remote folder', 'Upload file', 'Upload folder',
+    ];
     return {
+        toolbarButtons,
+        toolbarComplete: requiredButtons.every(label => toolbarButtons.includes(label)),
+        remoteTableVisible: !!document.querySelector('tabby-scp-browser [aria-label="Remote files"]'),
+        localTableHiddenByDefault: !document.querySelector('tabby-scp-browser [aria-label="Local files"]'),
+        permissionsColumnVisible: Array.from(document.querySelectorAll('tabby-scp-browser .scp-file-header'))
+            .some(header => header.textContent.includes('Perm.')),
+        filterInitiallyCollapsed: !document.querySelector('tabby-scp-browser .scp-filter'),
+        viewsInitiallyCollapsed: !document.querySelector('tabby-scp-browser .scp-view-options'),
         title: document.title,
         readyState: document.readyState,
         browser: !!browser,
@@ -107,6 +121,12 @@ function captureScreenshot(filename) {
 async function main() {
     const { target, state } = await waitForRenderedTabby();
     console.log('Initial Tabby renderer state:', JSON.stringify(state));
+    assert.equal(state.toolbarComplete, true, 'SFTP-style toolbar is missing controls');
+    assert.equal(state.permissionsColumnVisible, true, 'Permissions column is missing');
+    assert.equal(state.remoteTableVisible, true, 'Remote file view is missing');
+    assert.equal(state.localTableHiddenByDefault, true, 'Local view should not be shown by default');
+    assert.equal(state.filterInitiallyCollapsed, true, 'Filename filter must be collapsed by default');
+    assert.equal(state.viewsInitiallyCollapsed, true, 'Extra view options must be collapsed by default');
     if (mode === 'combined') {
         const clicked = await evaluate(target, String.raw`(() => {
             const tab = document.querySelector('[data-tabby-scp-tab]');
