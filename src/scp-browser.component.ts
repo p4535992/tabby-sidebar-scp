@@ -1,4 +1,4 @@
-import { Component, NgZone, OnDestroy, OnInit } from '@angular/core'
+import { Component, HostListener, NgZone, OnDestroy, OnInit } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import * as os from 'node:os'
 import * as path from 'node:path'
@@ -6,8 +6,10 @@ import { ScpTask, ScpTransferOptions, startScpTransfer } from './scp-core'
 import {
     ScpFileEntry, joinRemoteDirectory, parentRemoteDirectory,
     listLocalDirectory, listRemoteDirectory, moveLocalEntry, moveRemoteEntry,
+    createRemoteDirectory, createLocalDirectory,
 } from './scp-browser'
 import { ScpTransferDialogComponent } from './scp-dialog.component'
+import { readFavorites, toggleFavorite } from './scp-favorites'
 
 const DRAG_TYPE = 'application/x-tabby-scp-entry'
 type Side = 'local' | 'remote'
@@ -22,28 +24,76 @@ type Side = 'local' | 'remote'
       </div>
       <div class="scp-browser-shell">
         <!-- Same visual hierarchy as Better Sidebar's SFTP view: session, toolbar, path, listing. -->
-        <div class="scp-topbar" aria-label="SCP toolbar">
-          <div class="scp-session" [title]="host || 'No SSH host selected'">
-            <i class="fas fa-server" aria-hidden="true"></i>
-            <span class="scp-session-label">{{host || 'Select SSH host'}}</span>
-            <span class="scp-protocol-label">SCP</span>
-          </div>
-          <div class="scp-toolbar-actions">
-            <button type="button" class="scp-icon-button" [attr.aria-pressed]="showConnection"
-              (click)="showConnection = !showConnection" title="SSH connection settings" aria-label="SSH connection settings">
-              <i class="fas fa-sliders-h" aria-hidden="true"></i>
-            </button>
-            <button type="button" class="scp-icon-button" (click)="refreshCurrent()"
-              [disabled]="busy" title="Refresh files" aria-label="Refresh files">
-              <i class="fas fa-sync-alt" aria-hidden="true"></i>
-            </button>
-            <button type="button" class="scp-icon-button" (click)="openAdvanced()"
-              title="Advanced file transfer" aria-label="Advanced transfer dialog">
-              <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
-            </button>
-          </div>
+        <div class="scp-session-bar" aria-label="Current SSH server">
+          <i class="fa fa-fw fas fa-server" aria-hidden="true"></i>
+          <span class="scp-session-name" [title]="host || 'Select an SSH host'">{{host || 'Select SSH host'}}</span>
+          <span class="scp-protocol-label">SCP</span>
+          <button type="button" class="btn btn-link btn-sm scp-tool scp-connection-button"
+            [attr.aria-pressed]="showConnection" (click)="showConnection = !showConnection"
+            title="SSH connection settings" aria-label="SSH connection settings">
+            <i class="fa fa-fw fas fa-cog" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="btn btn-link btn-sm scp-tool" (click)="openAdvanced()"
+            title="Advanced transfers" aria-label="Advanced transfers">
+            <i class="fa fa-fw fas fa-ellipsis-v" aria-hidden="true"></i>
+          </button>
         </div>
-
+        <!-- Mirrors Better Sidebar SFTP: path, favorite, edit, refresh, filter, mkdir, upload file/folder. -->
+        <div class="scp-toolbar d-flex align-items-center" aria-label="SCP remote file toolbar">
+          <input *ngIf="editingRemotePath !== null" class="form-control form-control-sm scp-path-edit"
+            type="text" [(ngModel)]="editingRemotePath" autofocus aria-label="Type remote path"
+            (keydown.enter)="confirmRemotePath()" (keydown.escape)="cancelRemotePath()">
+          <div *ngIf="editingRemotePath === null" class="scp-breadcrumb" title="Double-click to type a path"
+            (dblclick)="editRemotePath()">
+            <button type="button" class="scp-crumb" (click)="goToRemotePath('/')">/</button>
+            <button type="button" class="scp-crumb" *ngFor="let crumb of remoteCrumbs"
+              (click)="goToRemotePath(crumb.path)">{{crumb.name}}</button>
+          </div>
+          <button type="button" class="btn btn-link btn-sm scp-tool scp-favorites-button"
+            [attr.aria-expanded]="favoritesMenuOpen" [disabled]="!host"
+            (click)="toggleFavoritesMenu($event)" title="Favorite folders" aria-label="Favorite folders">
+            <i class="fa fa-fw fa-star" [class.fas]="isCurrentFavorite" [class.far]="!isCurrentFavorite"
+              aria-hidden="true"></i>
+          </button>
+          <button type="button" class="btn btn-link btn-sm scp-tool" (click)="editRemotePath()"
+            title="Type the path by hand" aria-label="Edit remote path">
+            <i class="fa fa-fw fas fa-pen" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="btn btn-link btn-sm scp-tool" (click)="refreshRemote()" [disabled]="busy || !host"
+            title="Refresh" aria-label="Refresh remote files"><i class="fa fa-fw fas fa-sync-alt" aria-hidden="true"></i></button>
+          <button type="button" class="btn btn-link btn-sm scp-tool" (click)="showFilter = !showFilter"
+            [attr.aria-pressed]="showFilter" title="Filter the list" aria-label="Filter the list">
+            <i class="fa fa-fw fas fa-filter" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="btn btn-link btn-sm scp-tool" (click)="createFolder('remote')"
+            [disabled]="busy || !host" title="New remote folder" aria-label="New remote folder">
+            <i class="fa fa-fw fas fa-folder-plus" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="btn btn-link btn-sm scp-tool" (click)="pickUploadFile()"
+            [disabled]="busy || !host" title="Send a file to the server" aria-label="Upload file">
+            <i class="fa fa-fw fas fa-file-upload" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="btn btn-link btn-sm scp-tool" (click)="pickUploadFolder()"
+            [disabled]="busy || !host" title="Send a folder to the server" aria-label="Upload folder">
+            <i class="fa fa-fw fas fa-file-import" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="scp-favorites-popup" *ngIf="favoritesMenuOpen" role="menu" aria-label="Favorite remote folders"
+          (click)="$event.stopPropagation()">
+          <div class="scp-favorites-title">Favorite folders</div>
+          <div class="scp-favorites-empty" *ngIf="!favorites.length">No favorites yet — add the current folder below.</div>
+          <div class="scp-favorite-row" *ngFor="let folder of favorites">
+            <button type="button" role="menuitem" class="scp-favorite-link" [title]="folder"
+              (click)="goToFavorite(folder)"><i class="fa fa-fw fas fa-folder" aria-hidden="true"></i> {{folder}}</button>
+            <button type="button" class="scp-favorite-remove" [title]="'Remove ' + folder"
+              (click)="removeFavorite(folder)" aria-label="Remove favorite"><i class="fas fa-times" aria-hidden="true"></i></button>
+          </div>
+          <button type="button" role="menuitem" class="scp-favorite-add" (click)="toggleCurrentFavorite()">
+            <i class="fa fa-fw" [class.fas]="isCurrentFavorite" [class.fa-star]="!isCurrentFavorite"
+              [class.fa-times]="isCurrentFavorite" aria-hidden="true"></i>
+            {{isCurrentFavorite ? 'Remove current folder' : 'Add current folder'}}
+          </button>
+        </div>
         <!-- Connection settings are available but do not dominate the default file browser. -->
         <div class="scp-connection" *ngIf="showConnection" aria-label="SSH connection settings">
           <label>Host / SSH alias
@@ -81,7 +131,7 @@ type Side = 'local' | 'remote'
           </div>
         </div>
 
-        <label class="scp-filter" aria-label="Filter filenames">
+        <label class="scp-filter" *ngIf="showFilter" aria-label="Filter filenames">
           <i class="fas fa-search" aria-hidden="true"></i>
           <input type="text" [(ngModel)]="filter" placeholder="Filter files..." aria-label="Filter files">
           <button *ngIf="filter" class="scp-icon-button" type="button" (click)="filter = ''" aria-label="Clear filter">×</button>
@@ -90,16 +140,6 @@ type Side = 'local' | 'remote'
         <div class="scp-browser-panes" [class.scp-split]="viewMode === 'split'">
           <section class="scp-browser-pane" *ngIf="viewMode !== 'local'" aria-label="Remote files"
             (dragover)="allowDrop($event)" (drop)="onDrop('remote', null, $event)">
-            <div class="scp-pathbar">
-              <button class="scp-icon-button" type="button" title="Parent folder" aria-label="Remote parent folder" (click)="remoteUp()">
-                <i class="fas fa-level-up-alt" aria-hidden="true"></i>
-              </button>
-              <input type="text" class="form-control form-control-sm" aria-label="Remote directory" [(ngModel)]="remoteDirectory"
-                (keyup.enter)="refreshRemote()" title="Remote directory path">
-              <button class="scp-icon-button" type="button" title="Refresh remote" aria-label="Refresh remote" (click)="refreshRemote()">
-                <i class="fas fa-sync-alt" aria-hidden="true"></i>
-              </button>
-            </div>
             <div class="scp-file-header">
               <button type="button" (click)="setSort('name')">Name <i *ngIf="sortKey === 'name'" class="fas fa-sort" aria-hidden="true"></i></button>
               <button type="button" (click)="setSort('size')">Size</button>
@@ -107,6 +147,11 @@ type Side = 'local' | 'remote'
             </div>
             <div class="scp-error" role="alert" *ngIf="remoteError">{{remoteError}}</div>
             <div class="scp-file-list" role="listbox" aria-label="Remote entries" [attr.aria-busy]="loadingRemote">
+              <button type="button" *ngIf="remoteDirectory !== '/'" class="scp-file-row scp-go-up"
+                (click)="remoteUp()" title="Go up one level" aria-label="Go up one level">
+                <span class="scp-file-name"><i class="fa fa-fw fas fa-level-up-alt" aria-hidden="true"></i> <span>..</span></span>
+                <span></span><span></span>
+              </button>
               <button type="button" class="scp-file-row" *ngFor="let entry of displayedRemoteEntries"
                 [class.scp-selected]="selectedRemote?.path === entry.path" [attr.aria-selected]="selectedRemote?.path === entry.path"
                 [title]="entry.path" draggable="true" (dragstart)="onDrag('remote', entry, $event)"
@@ -182,6 +227,8 @@ type Side = 'local' | 'remote'
         <button type="button" role="menuitem" *ngIf="contextMenu.entry.isDirectory" (click)="contextOpen()"><i class="fas fa-folder-open" aria-hidden="true"></i> Open</button>
         <button type="button" role="menuitem" (click)="contextCopy()"><i class="fas fa-copy" aria-hidden="true"></i> {{contextMenu.side === 'remote' ? 'Download' : 'Upload'}}</button>
         <button type="button" role="menuitem" (click)="contextRename()"><i class="fas fa-i-cursor" aria-hidden="true"></i> Rename / move</button>
+        <button type="button" role="menuitem" *ngIf="contextMenu.side === 'remote' && contextMenu.entry.isDirectory"
+          (click)="contextFavorite()"><i class="far fa-star" aria-hidden="true"></i> Toggle favorite</button>
         <button type="button" role="menuitem" (click)="closeContextMenu()">Cancel</button>
       </div>
     `,
@@ -242,13 +289,66 @@ type Side = 'local' | 'remote'
       .scp-context-menu { position: fixed; z-index: 100000; display: flex; flex-direction: column; min-width: 140px; max-width: 220px; padding: 4px; background: var(--bs-body-bg, #262626); color: inherit; border: 1px solid #8888; box-shadow: 0 6px 18px #0005; border-radius: 5px; }
       .scp-context-menu button { background: transparent; color: inherit; border: none; text-align: left; padding: 7px; font-size: 12px; cursor: pointer; }
       .scp-context-menu button:hover { background: #8080803f; }
-      @media (max-height: 600px) { .scp-filter { display: none; } }
+      /* Mirror Better Sidebar SFTP's compact toolbar and list chrome. */
+      .scp-browser-shell { position: relative; padding: 4px 2px; gap: 2px; }
+      .scp-session-bar { display: flex; align-items: center; gap: 4px; min-height: 25px;
+        padding: .15rem .35rem; font-size: .75rem; opacity: .78; }
+      .scp-session-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .scp-toolbar { flex: none; gap: .1rem; padding: .15rem .1rem; min-width: 0; }
+      .scp-tool { flex: none; padding: .1rem .22rem !important; min-width: 0; color: inherit !important;
+        text-decoration: none; font-size: .75rem; }
+      .scp-tool:hover { background: var(--theme-secondary, #8883); }
+      .scp-tool:disabled { opacity: .4; }
+      .scp-favorites-button .fas { color: var(--theme-primary, #64aaf5); }
+      .scp-breadcrumb { display: flex; align-items: center; flex: 1 1 auto; gap: 1px;
+        overflow: auto hidden; scrollbar-width: none; white-space: nowrap; font-size: .75rem; min-width: 20px; }
+      .scp-breadcrumb::-webkit-scrollbar { display: none; }
+      .scp-crumb { border: 0; background: transparent; color: inherit; flex: none; cursor: pointer;
+        font-family: inherit; font-size: .75rem; padding: .12rem .22rem; border-radius: 2px; }
+      .scp-crumb:not(:first-child)::before { content: '/'; opacity: .5; margin-right: 2px; }
+      .scp-crumb:hover { color: var(--theme-primary, #64aaf5); background: var(--theme-secondary, #8883); }
+      .scp-path-edit { flex: 1 1 auto; width: 30px; min-width: 0; font-size: .75rem; }
+      .scp-favorites-popup { position: absolute; z-index: 100; right: 5px; top: 60px;
+        min-width: 190px; max-width: min(330px, 95%); padding: .25rem;
+        background: var(--theme-bg, #222); border: 1px solid var(--theme-secondary, #777);
+        color: inherit; border-radius: 4px; box-shadow: 0 5px 16px #0007; font-size: .75rem; }
+      .scp-favorites-title { padding: 5px 8px; color: var(--theme-primary, #64aaf5); font-weight: 600; }
+      .scp-favorites-empty { padding: 7px 8px; opacity: .75; }
+      .scp-favorite-row { display: flex; align-items: center; min-width: 0; }
+      .scp-favorite-link { flex: 1; min-width: 0; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+      .scp-favorites-popup button { background: transparent; border: 0; color: inherit;
+        text-align: left; padding: 6px 8px; cursor: pointer; font-size: inherit; }
+      .scp-favorites-popup button:hover { background: var(--theme-secondary, #8883); }
+      .scp-favorite-add { border-top: 1px solid var(--theme-secondary, #8884) !important; width: 100%; }
+      .scp-view-options { padding: .1rem .25rem; border-bottom: none; opacity: .85; }
+      .scp-mode-button { padding: 2px 6px; font-size: .7rem; }
+      .scp-mode-button.active { color: var(--theme-primary, #64aaf5); background: transparent;
+        box-shadow: inset 0 -2px var(--theme-primary, #64aaf5); }
+      .scp-filter { padding: .15rem .25rem; border: 0; border-bottom: 1px solid var(--theme-secondary, #7773);
+        border-radius: 0; }
+      .scp-browser-pane { border: 0; border-radius: 0; }
+      .scp-file-header, .scp-file-row { grid-template-columns: minmax(0,1fr) 58px 70px; }
+      .scp-file-header { position: sticky; top: 0; z-index: 2; background: var(--theme-bg, #222);
+        color: var(--theme-primary, #64aaf5); font-weight: 600; border-bottom: 2px solid var(--theme-primary, #64aaf5); }
+      .scp-file-header button { font-size: .75rem; opacity: 1; }
+      .scp-file-row { font-size: .75rem; line-height: 1.4; min-height: 24px; border-bottom: 0; }
+      .scp-file-row:nth-child(even) { background: rgba(128,128,128,.06); }
+      .scp-file-row:hover { background: var(--theme-secondary, #8884); }
+      .scp-file-row.scp-selected { background: color-mix(in srgb, var(--theme-primary, #64aaf5) 40%, transparent); }
+      .scp-file-size, .scp-file-date { font-size: .72rem; }
+      .scp-go-up { opacity: .65; }
+      .scp-command-bar { padding: 4px 2px; }
+      .scp-command-button { border: 0; padding: 4px 5px; font-size: .72rem; }
+
     `],
 })
 export class ScpBrowserComponent implements OnInit, OnDestroy {
     host = ''
     viewMode: 'remote' | 'local' | 'split' = 'remote'
     showConnection = false
+    showFilter = false
+    favoritesMenuOpen = false
+    editingRemotePath: string | null = null
     showHidden = true
     sortKey: 'name' | 'size' | 'date' = 'name'
     sortDescending = false
@@ -287,6 +387,155 @@ export class ScpBrowserComponent implements OnInit, OnDestroy {
         this.task?.cancel()
     }
 
+
+    @HostListener('document:click', ['$event'])
+    onDocumentClick(event: MouseEvent): void {
+        const clicked = event.target as HTMLElement | null
+        if (this.favoritesMenuOpen && !clicked?.closest('.scp-favorites-popup, .scp-favorites-button')) {
+            this.favoritesMenuOpen = false
+        }
+    }
+
+    get remoteCrumbs(): { name: string; path: string }[] {
+        const parts = this.remoteDirectory.split('/').filter(Boolean)
+        return parts.map((name, index) => ({
+            name,
+            path: '/' + parts.slice(0, index + 1).join('/'),
+        }))
+    }
+
+    get favorites(): string[] {
+        try { return readFavorites(window.localStorage, this.connection) }
+        catch { return [] }
+    }
+
+    get isCurrentFavorite(): boolean {
+        return this.favorites.includes(this.remoteDirectory)
+    }
+
+    toggleFavoritesMenu(event: MouseEvent): void {
+        event.preventDefault()
+        event.stopPropagation()
+        this.favoritesMenuOpen = !this.favoritesMenuOpen
+    }
+
+    private changeFavorite(folder: string): void {
+        try { toggleFavorite(window.localStorage, this.connection, folder) }
+        catch (error: unknown) { this.error = this.message(error) }
+    }
+
+    toggleCurrentFavorite(): void {
+        this.changeFavorite(this.remoteDirectory)
+        this.favoritesMenuOpen = true
+    }
+
+    removeFavorite(folder: string): void {
+        if (this.favorites.includes(folder)) this.changeFavorite(folder)
+        this.favoritesMenuOpen = true
+    }
+
+    goToFavorite(folder: string): void {
+        this.favoritesMenuOpen = false
+        this.goToRemotePath(folder)
+    }
+
+    goToRemotePath(directory: string): void {
+        this.remoteDirectory = directory
+        void this.refreshRemote()
+    }
+
+    editRemotePath(): void { this.editingRemotePath = this.remoteDirectory }
+
+    cancelRemotePath(): void { this.editingRemotePath = null }
+
+    confirmRemotePath(): void {
+        const candidate = this.editingRemotePath?.trim()
+        if (!candidate) { this.cancelRemotePath(); return }
+        if (!candidate.startsWith('/') || /[\x00-\x1f\x7f]/.test(candidate)) {
+            this.error = 'Remote path must be an absolute POSIX path'
+            return
+        }
+        this.editingRemotePath = null
+        this.goToRemotePath(candidate)
+    }
+
+    /** Native picker in Electron; the existing Local view remains a fallback. */
+    async pickUploadFile(): Promise<void> { await this.pickUpload(false) }
+
+    async pickUploadFolder(): Promise<void> { await this.pickUpload(true) }
+
+    private async pickUpload(isFolder: boolean): Promise<void> {
+        if (this.busy || !this.host.trim()) {
+            this.showConnection = true
+            return
+        }
+        try {
+            // @electron/remote is provided at runtime by Tabby; do not import it
+            // from the build because this plugin must also load without it.
+            const nodeRequire = (window as any).require ?? (global as any).require
+            const dialog = nodeRequire?.('@electron/remote')?.dialog
+            if (!dialog?.showOpenDialog) {
+                this.setViewMode('local')
+                this.status = 'Choose a local file or folder, then select Upload.'
+                return
+            }
+            const selected = await dialog.showOpenDialog({
+                title: isFolder ? 'Upload a folder via SCP' : 'Upload a file via SCP',
+                properties: isFolder ? ['openDirectory'] : ['openFile'],
+            })
+            if (selected?.canceled || !selected?.filePaths?.length) return
+            const selectedPath: string = selected.filePaths[0]
+            this.copyEntry('upload', {
+                path: selectedPath,
+                name: path.basename(selectedPath),
+                isDirectory: isFolder,
+                isSymbolicLink: false,
+            }, this.remoteDirectory)
+        } catch (error: unknown) {
+            this.error = this.message(error)
+            this.status = 'Could not open the file picker'
+        }
+    }
+
+    async createFolder(side: Side): Promise<void> {
+        if (this.busy || (side === 'remote' && !this.host.trim())) return
+        const name = window.prompt(side === 'remote' ? 'New remote folder name' : 'New local folder name')
+        if (!name) return
+        if (name === '.' || name === '..' || /[\/\\\x00-\x1f\x7f]/.test(name)) {
+            this.error = 'Folder name must not contain slashes or control characters'
+            return
+        }
+        this.busy = true
+        this.error = ''
+        this.status = 'Creating folder…'
+        try {
+            if (side === 'remote') {
+                await createRemoteDirectory(this.connection, joinRemoteDirectory(this.remoteDirectory, name))
+            } else {
+                await createLocalDirectory(path.join(this.localDirectory, name))
+            }
+            this.zone.run(() => {
+                this.status = 'Folder created'
+                if (side === 'remote') void this.refreshRemote()
+                else void this.refreshLocal()
+            })
+        } catch (error: unknown) {
+            this.zone.run(() => {
+                this.status = 'Could not create folder'
+                this.error = this.message(error)
+            })
+        } finally {
+            this.zone.run(() => { this.busy = false })
+        }
+    }
+
+    contextFavorite(): void {
+        const chosen = this.contextMenu
+        this.closeContextMenu()
+        if (chosen?.side === 'remote' && chosen.entry.isDirectory) {
+            this.changeFavorite(chosen.entry.path)
+        }
+    }
 
     get activeEntry(): ScpFileEntry | null {
         return this.activeSide === 'remote' ? this.selectedRemote : this.selectedLocal
