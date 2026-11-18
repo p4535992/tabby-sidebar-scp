@@ -5,6 +5,9 @@ export interface ScpFileEntry {
   path: string;
   isDirectory: boolean;
   isSymbolicLink: boolean;
+  size?: number;
+  modifiedAt?: number;
+  mode?: string;
 }
 
 export function joinRemoteDirectory(directory: string, name: string): string;

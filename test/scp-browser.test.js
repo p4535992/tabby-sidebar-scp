@@ -34,23 +34,27 @@ test('remote directory listing uses quoted POSIX path and strict SSH options', (
   assert.ok(command.args.includes('StrictHostKeyChecking=yes'));
   assert.deepEqual(command.args.slice(-2), [
     'alice@example-ssh',
-    String.raw`LC_ALL=C find -- '/data/it'\''s a space' -mindepth 1 -maxdepth 1 -printf '%y\t%f\0'`,
+    String.raw`LC_ALL=C find -- '/data/it'\''s a space' -mindepth 1 -maxdepth 1 -printf '%y\t%f\t%s\t%T@\t%m\0'`,
   ]);
   assert.throws(() => buildListCommand(host, 'relative/path'), /absolute/);
   assert.throws(() => buildListCommand({host: '-bad'}, '/tmp'), /Host/);
 });
 
 test('parses NUL-delimited file and directory entries without splitting whitespace', () => {
-  const content = Buffer.from('f\tFile with spaces.txt\0d\tFolder name\0l\tsoft-link\0');
+  const content = Buffer.from('f\tFile with spaces.txt\t1024\t1700000000.5\t644\0d\tFolder name\t4096\t1700000000.0\t755\0l\tsoft-link\t12\t1700000000.0\t777\0');
   assert.deepEqual(parseRemoteEntries(content, '/home/alice').map(e => [e.name, e.isDirectory, e.isSymbolicLink]), [
     ['Folder name', true, false], ['File with spaces.txt', false, false], ['soft-link', false, true],
   ]);
-  assert.throws(() => parseRemoteEntries(Buffer.from('f\tfoo'), '/tmp'), /Malformed/);
-  assert.throws(() => parseRemoteEntries(Buffer.from('f\t../bad\0'), '/tmp'), /Invalid/);
+  const parsed = parseRemoteEntries(content, '/home/alice');
+  assert.equal(parsed.find(e => e.name === 'File with spaces.txt').size, 1024);
+  assert.equal(parsed.find(e => e.name === 'File with spaces.txt').modifiedAt, 1700000000500);
+  assert.throws(() => parseRemoteEntries(Buffer.from('f\tfoo\t123\t1700000000.0\t644'), '/tmp'), /Malformed/);
+  assert.throws(() => parseRemoteEntries(Buffer.from('f\tbad\tnot-a-size\t1\t644\0'), '/tmp'), /metadata/);
+  assert.throws(() => parseRemoteEntries(Buffer.from('f\t../bad\t123\t1700000000.0\t644\0'), '/tmp'), /Invalid/);
 });
 
 test('remote read is a safe no-shell child process', async () => {
-  const output = 'd\tbackup\0f\tnew.txt\0';
+  const output = 'd\tbackup\t4096\t1700000000.0\t755\0f\tnew.txt\t20\t1700000000.5\t644\0';
   const result = await listRemoteDirectory(host, '/srv', { spawn: fakeSpawn(output) });
   assert.deepEqual(result.entries.map(e => e.path), ['/srv/backup', '/srv/new.txt']);
 });
@@ -80,6 +84,8 @@ test('local browser lists files and moving refuses overwrite', async () => {
     fs.writeFileSync(path.join(dir, 'exists.txt'), 'data');
     const listing = await listLocalDirectory(dir);
     assert.deepEqual(listing.entries.map(e => e.name), ['folder', 'exists.txt', 'source.txt']);
+    assert.equal(listing.entries.find(e => e.name === 'source.txt').size, 4);
+    assert.ok(listing.entries.find(e => e.name === 'source.txt').modifiedAt > 0);
     await assert.rejects(moveLocalEntry(path.join(dir, 'source.txt'), path.join(dir, 'exists.txt')), /already exists/);
     await moveLocalEntry(path.join(dir, 'source.txt'), path.join(dir, 'new name.txt'));
     assert.equal(fs.readFileSync(path.join(dir, 'new name.txt'), 'utf8'), 'data');

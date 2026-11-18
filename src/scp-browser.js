@@ -37,8 +37,9 @@ function buildSshCommand(input, command) {
 
 function buildListCommand(input, directory) {
   const quotedDirectory = quoteRemotePath(directory);
-  // GNU find's %f and NUL delimiters retain spaces, apostrophes and non-ASCII names.
-  const command = String.raw`LC_ALL=C find -- ${quotedDirectory} -mindepth 1 -maxdepth 1 -printf '%y\t%f\0'`;
+  // GNU find emits type/name/size/mtime/mode with NUL records.
+  // File names containing tabs or control characters remain unsupported.
+  const command = String.raw`LC_ALL=C find -- ${quotedDirectory} -mindepth 1 -maxdepth 1 -printf '%y\t%f\t%s\t%T@\t%m\0'`;
   return buildSshCommand(input, command);
 }
 
@@ -102,13 +103,21 @@ function parseRemoteEntries(buffer, directory) {
   if (records.pop() !== '') throw new Error('Malformed remote file listing');
   for (const record of records) {
     if (!record) continue;
-    const split = record.indexOf('\t');
-    if (split !== 1) throw new Error('Malformed remote file listing');
-    const kind = record.slice(0, 1);
-    const name = record.slice(2);
+    const fields = record.split('\t');
+    if (fields.length !== 5 || fields[0].length !== 1) {
+      throw new Error('Malformed remote file listing');
+    }
+    const [kind, name, rawSize, rawTime, mode] = fields;
+    const size = Number(rawSize);
+    const modifiedAt = Number(rawTime) * 1000;
+    if (!Number.isFinite(size) || size < 0 || !Number.isFinite(modifiedAt)
+      || !/^[0-7]{3,4}$/.test(mode)) {
+      throw new Error('Malformed remote file metadata');
+    }
     // Reject unsupported names: UI uses single-path SCP transfers.
     const entryPath = joinRemoteDirectory(directory, name);
-    entries.push({ name, path: entryPath, isDirectory: kind === 'd', isSymbolicLink: kind === 'l' });
+    entries.push({ name, path: entryPath, isDirectory: kind === 'd', isSymbolicLink: kind === 'l',
+      size, modifiedAt, mode });
   }
   return sortEntries(entries);
 }
@@ -123,11 +132,14 @@ async function listLocalDirectory(directory, fileSystem = fs) {
   const listing = await fileSystem.promises.readdir(resolved, { withFileTypes: true });
   return {
     directory: resolved,
-    entries: sortEntries(listing.map(item => ({
-      name: item.name,
-      path: path.join(resolved, item.name),
-      isDirectory: item.isDirectory(),
-      isSymbolicLink: item.isSymbolicLink(),
+    entries: sortEntries(await Promise.all(listing.map(async item => {
+      const fullPath = path.join(resolved, item.name);
+      const stats = await fileSystem.promises.lstat(fullPath);
+      return {
+        name: item.name, path: fullPath,
+        isDirectory: item.isDirectory(), isSymbolicLink: item.isSymbolicLink(),
+        size: stats.size, modifiedAt: stats.mtimeMs, mode: (stats.mode & 0o777).toString(8),
+      };
     }))),
   };
 }
