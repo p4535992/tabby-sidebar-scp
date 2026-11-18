@@ -187,33 +187,6 @@ Captured from [successful GitHub Actions run #44311878384](https://github.com/p4
 The [combined-mode artifact](https://github.com/p4535992/tabby-sidebar-scp/actions/runs/44311878384)
 also contains the un-cropped application screenshot and renderer diagnostics.
 
-### Earlier remote-first standalone view (release 0.1.0)
-
-This is a **real GitHub Actions screenshot** of the earlier remote-first SCP UI
-in Tabby 1.0.238, captured by the standalone smoke test. The image is cropped
-to the Tabby window only; the UI itself was not altered. The toolbar has
-since been updated on `main` to match Better Sidebar's SFTP buttons.
-
-![New remote-first SCP sidebar running standalone in Tabby](docs/screenshots/after-standalone.png)
-
-### Previous two-pane layout (for comparison)
-
-The images below are **real captures from the previous two-pane interface**,
-made by GitHub Actions before the SFTP-inspired redesign. They are provided
-for historical comparison, **not as screenshots of the new layout**.
-
-**Previous interface with Better Sidebar:**
-
-![Previous SCP tab next to Better Sidebar](docs/screenshots/before-combined.png)
-
-**Previous standalone SCP sidebar:**
-
-![Previous standalone SCP sidebar](docs/screenshots/before-standalone.png)
-
-The earlier remote-first GUI passed the [GitHub Actions VM tests](https://github.com/p4535992/tabby-sidebar-scp/actions/runs/44299827012).
-The combined-mode screenshot and diagnostic logs are available in that run's
-artifacts. The standalone screenshot above is committed to the repository.
-
 ## GitHub Actions test VM
 
 The repository includes a [GitHub Actions VM smoke test](.github/workflows/tabby-vm.yml)

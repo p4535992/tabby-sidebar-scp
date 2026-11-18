@@ -141,9 +141,8 @@ public view provider. The independent SCP sidebar will remain as fallback.
 The SCP browser uses its own component but follows the Better Sidebar SFTP
 layout: header, directory toolbar, filter and file list. Remote is the default;
 Local and Split remain available for transfers. See [UI consistency](UI_PARITY.md).
-Older GitHub Actions screenshots are stored under `docs/screenshots/before-*`
-and are explicitly not screenshots of the new layout. The current combined toolbar screenshot is
+The screenshot of the current toolbar is
 [`screenshots/after-sftp-toolbar.webp`](screenshots/after-sftp-toolbar.webp),
-derived from [GitHub Actions run #44311878384](https://github.com/p4535992/tabby-sidebar-scp/actions/runs/44311878384).
-The old screenshots are historical and must not be used as proof of current
-SFTP toolbar parity.
+captured in [GitHub Actions run #44311878384](https://github.com/p4535992/tabby-sidebar-scp/actions/runs/44311878384).
+It shows the toolbar/header without a remote SSH host selected; it is not a
+demonstration of a populated remote file listing.

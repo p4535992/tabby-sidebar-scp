@@ -85,8 +85,6 @@ The real current toolbar screenshot is
 It was taken by [the successful combined GitHub Actions GUI job](https://github.com/p4535992/tabby-sidebar-scp/actions/runs/44311878384)
 (Tabby 1.0.238 with Better Sidebar 1.0.11), then cropped to the toolbar.
 No UI elements were generated or altered. The VM has no remote SSH host selected.
-The older `screenshots/after-standalone.png` predates this toolbar update and
-is correctly labeled as an earlier remote-first implementation.
 
 ## Technical boundaries
 
@@ -101,14 +99,6 @@ session, or Tabby-stored passwords. Remote legacy SCP downloads with complex
 filenames retain the existing explicit `scp -T` confirmation rule. No new
 file-editing, bookmarks or native OS drag-out behavior is implied by the UI.
 
-## Screenshot provenance
-
-The files under `docs/screenshots/before-*` are **real screenshots from the
-prior layout** on disposable GitHub Actions Ubuntu VMs, captured before this
-redesign. They are **before** references, not screenshots of the new interface.
-The new toolbar screenshot was captured after the updated Xvfb/Electron
-GitHub Actions smoke tests passed, with the seven expected controls visible.
-
 ## Validation
 
 The [GitHub Actions test run #44311878384](https://github.com/p4535992/tabby-sidebar-scp/actions/runs/44311878384)
@@ -117,26 +107,3 @@ and Better Sidebar combined modes. The combined CDP assertions checked all seven
 toolbar buttons, the default remote-only view, the permissions column, and
 switching into and out of SCP. This is not a full interactive test of file-dialog
 selection, favorite persistence or drag-and-drop, which remain to be tested manually.
-
-
-### Before redesign (real screenshots)
-
-These images document the old two-pane SCP interface and must not be presented
-as results from the new SFTP-inspired layout.
-
-![Old SCP view next to Better Sidebar](screenshots/before-combined.png)
-
-![Old SCP standalone sidebar](screenshots/before-standalone.png)
-
-### After redesign
-
-The standalone layout passed the GitHub Actions Tabby/Electron smoke test on
-the redesigned source. This screenshot is a **real VM capture**, cropped to the
-Tabby application window (no UI elements were modified):
-
-![Redesigned remote-first SCP standalone panel](screenshots/after-standalone.png)
-
-The more recent combined Better Sidebar screenshot (current SFTP-style toolbar)
-is shown above as `screenshots/after-sftp-toolbar.webp`. The image is a
-cropped capture of a successful live Tabby GUI VM test. Earlier images remain
-for comparison only.
