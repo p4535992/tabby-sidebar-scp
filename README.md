@@ -5,10 +5,11 @@ install it alongside [Better Sidebar](https://github.com/TooMuhtsh/tabby-better-
 **Better Sidebar is optional:** this plugin does not depend on it and never modifies
 its repository or requires a fork.
 
-> **Development status:** the SSH/SCP backend and the previous two-pane GUI
-> passed GitHub Actions tests with Tabby 1.0.238. The redesigned SFTP-inspired
-> interface still requires new VM screenshots and GUI verification. Test on a
-> disposable SSH host before transferring important files.
+> **Early release 0.1.0:** the SSH/SCP engine and redesigned SFTP-inspired
+> interface passed GitHub Actions VM tests with Tabby 1.0.238, both standalone
+> and with Better Sidebar 1.0.11. The optional Better Sidebar adapter uses
+> undocumented DOM selectors. Test with disposable files before production use;
+> manual drag-and-drop and cross-platform UI validation remain necessary.
 
 ## Where the SCP panel appears
 
@@ -93,7 +94,29 @@ strict filename check rejects the request. Downloading them requires a
 check). Use this only on a trusted SSH server. The advanced dialog exposes
 the same opt-in setting.
 
-## Build, install and test
+## Download and install release 0.1.0
+
+The first GitHub release is tagged **`0.1.0`** — **not `v0.1.0`**.
+Download the compiled `tabby-sidebar-scp-0.1.0.tgz` package from
+[GitHub Releases](https://github.com/p4535992/tabby-sidebar-scp/releases/tag/0.1.0).
+Verify it against the accompanying `SHA256SUMS.txt`.
+
+Close Tabby completely and install the local archive into its plugin directory:
+
+```bash
+# Linux / macOS (substitute the actual downloaded path)
+npm install --prefix "$HOME/.config/tabby/plugins" \
+  "/path/to/tabby-sidebar-scp-0.1.0.tgz" --ignore-scripts
+```
+
+On Windows, use the Tabby plugins prefix `$env:APPDATA\tabby\plugins`
+in PowerShell, then install the downloaded `.tgz` file using `npm install
+--prefix`. Restart Tabby completely.
+
+The archive contains the compiled `dist/index.js` entry point. This GitHub
+release does not imply publication to the npm registry.
+
+## Build from source and test
 
 ```bash
 npm install --ignore-scripts
@@ -101,9 +124,9 @@ npm test
 npm run build
 ```
 
-To install this unpublished plugin locally, link the built package into
-Tabby's plugins directory and fully restart Tabby. Details and a manual
-acceptance checklist are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+For local development, link the built source package into Tabby's plugins
+directory and fully restart Tabby. Details and a manual acceptance checklist
+are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Source layout
 
@@ -139,9 +162,9 @@ for historical comparison, **not as screenshots of the new layout**.
 
 ![Previous standalone SCP sidebar](docs/screenshots/before-standalone.png)
 
-Screenshots of the redesigned UI will be published after new VM GUI tests
-pass on the redesign revision. The [Actions runs](https://github.com/p4535992/tabby-sidebar-scp/actions/workflows/tabby-vm.yml)
-also retain downloadable artifacts and diagnostic logs.
+Both redesigned GUI modes passed the [GitHub Actions VM tests](https://github.com/p4535992/tabby-sidebar-scp/actions/runs/44299827012).
+The combined-mode screenshot and diagnostic logs are available in that run's
+artifacts. The standalone screenshot above is committed to the repository.
 
 ## GitHub Actions test VM
 
@@ -172,6 +195,17 @@ manual UI verification. An actual SSH/SCP loopback transfer is verified
 automatically. Tabby and Better Sidebar versions are pinned for a repeatable
 test target; this does not certify all future releases. The GitHub workflow
 does not modify other repositories, create pull requests or upload SSH keys.
+
+## Release automation
+
+The [numeric-tag release workflow](.github/workflows/release.yml) waits for
+a **successful main-branch Ubuntu VM smoke test** before creating a release.
+It also supports manual `workflow_dispatch` for future versions. Release
+identifiers and titles are numeric only, such as `0.1.0`; a leading `v` is
+rejected. It builds, runs unit tests, packs a compiled `.tgz` and publishes a
+SHA-256 checksum. It does not publish to npm or modify Better Sidebar.
+
+See the [changelog](CHANGELOG.md) and [release notes](docs/releases/0.1.0.md).
 
 ## License
 
