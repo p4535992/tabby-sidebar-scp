@@ -3,6 +3,33 @@
 All notable changes to this project are documented here. Release identifiers are
 numeric semantic versions **without a `v` prefix**.
 
+## [0.1.1] - 2026-11-18
+
+Second GitHub release, packaging the SFTP-style SCP sidebar improvements.
+
+### Added
+- Seven-button remote toolbar matching Better Sidebar's SFTP conventions:
+  favorite folders, edit path, refresh, filter, create remote folder, upload
+  file, and upload folder.
+- Remote folder favorites persisted per SSH connection (host/user/port), without
+  sharing settings with Better Sidebar.
+- Remote directory creation over noninteractive SSH, and native picker actions
+  for file/folder uploads where Tabby's Electron APIs are available.
+
+### Changed
+- SFTP-inspired remote-first file listing, breadcrumbs, columns and contextual
+  file actions, while retaining standalone, Local and Split modes.
+- README and documentation now highlight the current UI instead of obsolete
+  comparison screenshots.
+- GitHub Actions VM tests cover the toolbar and both Tabby layout modes.
+
+### Limitations
+- Manual drag-and-drop and native picker interactions are not covered by the
+  automated renderer smoke tests.
+- Better Sidebar integration remains a best-effort DOM compatibility adapter.
+
+See [0.1.1 release notes](docs/releases/0.1.1.md).
+
 ## [0.1.0] - 2026-11-18
 
 First public GitHub release.
