@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: tabby-scp-vm-${{ github.ref }
+  group: tabby-scp-vm-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -79,7 +79,7 @@ jobs:
         run: node ci/scp-loopback-test.cjs
 
   tabby-gui:
-    name: Tabby GUI / ${{ matrix.mode }
+    name: Tabby GUI / ${{ matrix.mode }}
     needs: scp-loopback
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -133,14 +133,14 @@ jobs:
       - name: Launch real Tabby and assert SCP UI
         shell: bash
         env:
-          GITHUB_WORKSPACE: ${{ github.workspace }
-        run: bash ci/gui-smoke.sh "${{ matrix.mode }"
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+        run: bash ci/gui-smoke.sh "${{ matrix.mode }}"
 
       - name: Upload screenshot and GUI diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tabby-scp-${{ matrix.mode }-${{ github.run_id }
+          name: tabby-scp-${{ matrix.mode }}-${{ github.run_id }}
           path: artifacts/
           if-no-files-found: warn
           retention-days: 7
