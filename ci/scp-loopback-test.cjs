@@ -8,7 +8,7 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { startScpTransfer } = require('../src/scp-core');
-const { listRemoteDirectory, moveRemoteEntry } = require('../src/scp-browser');
+const { listRemoteDirectory, moveRemoteEntry, createRemoteDirectory } = require('../src/scp-browser');
 
 const hash = file => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 
@@ -50,6 +50,12 @@ async function main() {
         const listing = await listRemoteDirectory(connection, remote);
         assert(listing.entries.some(entry => entry.name === name));
         console.log('PASS: remote directory listing over SSH');
+
+        const createdFolder = path.join(remote, 'folder created by SCP');
+        await createRemoteDirectory(connection, createdFolder);
+        assert.equal(fs.statSync(createdFolder).isDirectory(), true);
+        await assert.rejects(() => createRemoteDirectory(connection, createdFolder), /./);
+        console.log('PASS: remote folder creation over SSH refuses collisions');
 
         await moveRemoteEntry(connection, copied, renamed);
         assert.equal(fs.existsSync(copied), false, 'Old remote path still exists');
