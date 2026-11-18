@@ -86,6 +86,12 @@ Remote arguments are restricted/quoted and SSH host-key checks remain enabled.
 Neither file listings nor moves trigger arbitrary remote commands from user
 input; they invoke fixed `find` or `mv` templates with quoted paths. SCP
 **can overwrite destination files**; every transfer asks for confirmation.
+For simple remote filenames, strict SCP filename verification stays enabled.
+For shell-quoted remote download names (spaces, punctuation), legacy SCP's
+strict filename check rejects the request. Downloading them requires a
+**second explicit confirmation** for `scp -T` (which disables that filename
+check). Use this only on a trusted SSH server. The advanced dialog exposes
+the same opt-in setting.
 
 ## Build, install and test
 

@@ -212,8 +212,13 @@ export class ScpBrowserComponent implements OnInit, OnDestroy {
             ? joinRemoteDirectory(destinationDirectory, entry.name)
             : path.join(destinationDirectory, entry.name)
         if (!window.confirm(`Copy ${source} to ${destination}?\nExisting files may be overwritten. The original is retained.`)) return
+        const complexDownload = !upload && !/^\/[A-Za-z0-9_./-]+$/.test(source)
+        if (complexDownload && !window.confirm(
+            'Legacy SCP requires -T for this filename, disabling remote filename checks. Only proceed if you trust this SSH server. Continue?',
+        )) return
         const options: ScpTransferOptions = {
             ...this.connection, direction,
+            allowUnverifiedRemoteNames: complexDownload,
             localPath: upload ? source : destination,
             remotePath: upload ? destination : source,
             recursive: entry.isDirectory,

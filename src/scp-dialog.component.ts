@@ -52,6 +52,7 @@ import { ScpDirection, ScpTask, ScpTransferOptions, startScpTransfer } from './s
                     <label><input type="checkbox" name="recursive" [(ngModel)]="recursive" [disabled]="isBusy" /> Directories (-r)</label>
                     <label><input type="checkbox" name="preserveTimes" [(ngModel)]="preserveTimes" [disabled]="isBusy" /> Preserve timestamps (-p)</label>
                     <label><input type="checkbox" name="compress" [(ngModel)]="compress" [disabled]="isBusy" /> Compression (-C)</label>
+                    <label *ngIf="direction === 'download'"><input type="checkbox" name="allowUnverifiedRemoteNames" [(ngModel)]="allowUnverifiedRemoteNames" [disabled]="isBusy" /> Trust complex remote names (-T: disables filename verification)</label>
                 </div>
                 <label class="scp-confirm">
                     <input type="checkbox" name="confirmOverwrite" [(ngModel)]="confirmOverwrite" [disabled]="isBusy" />
@@ -103,6 +104,7 @@ export class ScpTransferDialogComponent implements OnDestroy {
     recursive = false
     preserveTimes = false
     compress = false
+    allowUnverifiedRemoteNames = false
     confirmOverwrite = false
     logText = ''
     error = ''
@@ -126,6 +128,7 @@ export class ScpTransferDialogComponent implements OnDestroy {
             recursive: this.recursive,
             preserveTimes: this.preserveTimes,
             compress: this.compress,
+            allowUnverifiedRemoteNames: this.allowUnverifiedRemoteNames,
         }
         this.error = ''
         this.logText = ''

@@ -50,12 +50,23 @@ test('quotes apostrophes and shell metacharacters in remote paths', () => {
 });
 
 test('download places remote operand first', () => {
-  const command = buildScpCommand(input({ direction: 'download', recursive: true }));
+  const command = buildScpCommand(input({ direction: 'download', recursive: true, allowUnverifiedRemoteNames: true }));
   assert.deepEqual(command.args.slice(-2), [
     "deploy@server-in-ssh-config:'/home/deploy/a file.txt'",
     path.resolve('/tmp/a file.txt'),
   ]);
   assert.ok(command.args.includes('-r'));
+  assert.ok(command.args.includes('-T'));
+});
+
+test('simple remote downloads retain strict filename validation', () => {
+  const command = buildScpCommand(input({ direction: 'download', remotePath: '/home/deploy/file.txt' }));
+  assert.equal(command.args.at(-2), 'deploy@server-in-ssh-config:/home/deploy/file.txt');
+  assert.ok(!command.args.includes('-T'));
+});
+
+test('complex remote downloads require explicit opt-in', () => {
+  assert.throws(() => buildScpCommand(input({ direction: 'download', remotePath: '/home/deploy/a file.txt' })), /explicit opt-in/);
 });
 
 test('rejects injection in endpoints and invalid fields', () => {

@@ -93,7 +93,15 @@ function buildScpCommand(input) {
   const { endpoint, port, identityFile } = validateConnection(input);
   const localPath = resolveLocalPath(input.localPath, 'Local path');
   const remotePath = stringField(input.remotePath, 'Remote path');
-  const remoteSpec = `${endpoint}:${quoteRemotePath(remotePath)}`;
+  // Legacy SCP strict checking compares the received basename to the source
+  // string. Shell quotes in an otherwise simple source cause a false mismatch.
+  const complexSource = !/^\/[A-Za-z0-9_./-]+$/.test(remotePath);
+  const mustRelaxNames = input.direction === 'download' && complexSource;
+  if (mustRelaxNames && input.allowUnverifiedRemoteNames !== true) {
+    throw new ScpValidationError('Complex remote download paths require explicit opt-in to scp -T; only use with a trusted server');
+  }
+  const remoteSpec = `${endpoint}:${input.direction === 'download' && !complexSource
+    ? remotePath : quoteRemotePath(remotePath)}`;
   const args = [
     '-O', // force legacy SCP protocol, never silently fall back to SFTP
     '-B', // disable interactive prompts in the GUI
@@ -101,6 +109,7 @@ function buildScpCommand(input) {
     '-o', 'StrictHostKeyChecking=yes',
     '-o', 'ConnectTimeout=15',
   ];
+  if (mustRelaxNames) args.push('-T'); // explicit opt-in: bypass SCP server filename check
   if (port != null) args.push('-P', String(port));
 
   if (identityFile) args.push('-i', identityFile);

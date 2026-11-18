@@ -60,6 +60,15 @@ async function main() {
         assert.equal(hash(source), hash(downloaded), 'Downloaded bytes changed');
         console.log('PASS: download (SCP legacy protocol) and SHA-256');
 
+        // Only this ephemeral trusted loopback server is allowed to use -T.
+        fs.copyFileSync(renamed, copied);
+        const complexDownload = path.join(output, 'complex-download.txt');
+        await transfer({ ...connection, direction: 'download',
+            localPath: complexDownload, remotePath: copied,
+            allowUnverifiedRemoteNames: true });
+        assert.equal(hash(source), hash(complexDownload));
+        console.log('PASS: explicit -T download for complex legacy name');
+
         await assert.rejects(() => moveRemoteEntry(connection, renamed, downloaded), /./);
         console.log('PASS: remote move refuses existing destination');
     } finally {

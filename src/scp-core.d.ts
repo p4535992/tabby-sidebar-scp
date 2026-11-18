@@ -11,6 +11,8 @@ export interface ScpTransferOptions {
   recursive?: boolean;
   preserveTimes?: boolean;
   compress?: boolean;
+  /** Explicit trust for complex legacy SCP download names; sets scp -T. */
+  allowUnverifiedRemoteNames?: boolean;
 }
 
 export interface ScpTransferResult {
