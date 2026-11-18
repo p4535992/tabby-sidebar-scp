@@ -1,6 +1,6 @@
 {
   "name": "tabby-sidebar-scp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Standalone SCP file browser for Tabby with optional Better Sidebar tab",
   "keywords": [
     "tabby-plugin",
