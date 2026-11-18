@@ -1,0 +1,136 @@
+name: Release (numeric tag)
+
+# Automatically publish only after the main-branch Tabby VM smoke tests pass.
+# Manual dispatch supports future numeric releases. No v-prefixed tags.
+on:
+  workflow_run:
+    workflows:
+      - Tabby SCP - Ubuntu VM smoke tests
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release number, for example 0.1.0 (no v prefix)'
+        required: true
+        type: string
+        default: '0.1.0'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tabby-scp-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Test, package and publish numeric release
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Check out main (never read pull requests)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate numeric version, tested revision and release state
+        id: check
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_VERSION: ${{ inputs.version || '' }}
+          TESTED_SHA: ${{ github.event.workflow_run.head_sha || '' }}
+        run: |
+          set -euo pipefail
+          current_sha="$(git rev-parse HEAD)"
+          if [[ "$GITHUB_EVENT_NAME" == workflow_run && "$current_sha" != "$TESTED_SHA" ]]; then
+            echo "Skipping: VM tests ran on $TESTED_SHA, but main now points to $current_sha"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          version="$(node -p "require('./package.json').version")"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid version '$version'; use only digits and dots, e.g. 0.1.0" >&2
+            exit 1
+          fi
+          if [[ -n "$REQUESTED_VERSION" && "$REQUESTED_VERSION" != "$version" ]]; then
+            echo "Requested version $REQUESTED_VERSION does not match package.json ($version)" >&2
+            exit 1
+          fi
+          test -s "docs/releases/$version.md"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "sha=$current_sha" >> "$GITHUB_OUTPUT"
+          if gh release view "$version" >/dev/null 2>&1; then
+            echo "Release $version already exists; no duplicate release will be created."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$version" >/dev/null 2>&1; then
+            echo "Tag $version exists without a release; refusing to retarget the tag." >&2
+            exit 1
+          fi
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        if: steps.check.outputs.publish == 'true'
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run unit tests
+        if: steps.check.outputs.publish == 'true'
+        run: npm test
+
+      - name: Compile production plugin
+        if: steps.check.outputs.publish == 'true'
+        run: |
+          set -euo pipefail
+          npm run build
+          test -s dist/index.js
+
+      - name: Package npm-compatible release archive and checksum
+        if: steps.check.outputs.publish == 'true'
+        shell: bash
+        env:
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          npm pack --ignore-scripts --pack-destination release
+          archive="release/tabby-sidebar-scp-$VERSION.tgz"
+          test -s "$archive"
+          tar -tzf "$archive" | grep -qx 'package/dist/index.js'
+          tar -tzf "$archive" | grep -qx 'package/package.json'
+          (cd release && sha256sum "tabby-sidebar-scp-$VERSION.tgz" > SHA256SUMS.txt)
+
+      - name: Create GitHub tag and release (exact version; no v)
+        if: steps.check.outputs.publish == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.check.outputs.version }}
+          SOURCE_SHA: ${{ steps.check.outputs.sha }}
+        run: |
+          set -euo pipefail
+          gh release create "$VERSION" \
+            "release/tabby-sidebar-scp-$VERSION.tgz" \
+            release/SHA256SUMS.txt \
+            --target "$SOURCE_SHA" \
+            --title "$VERSION" \
+            --notes-file "docs/releases/$VERSION.md" \
+            --latest
+          gh release view "$VERSION" --json tagName,url,isDraft \
+            --jq '{tag: .tagName, url: .url, draft: .isDraft}'
