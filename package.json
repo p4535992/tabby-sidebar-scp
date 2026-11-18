@@ -46,5 +46,6 @@
     "typescript": "^4.9.5",
     "webpack": "^5.24.4",
     "webpack-cli": "^4.5.0"
-  }
+  },
+  "author": "p4535992"
 }
