@@ -17,10 +17,10 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release number, for example 0.1.0 (no v prefix)'
+        description: 'Numeric release number, for example 0.1.1 (no v prefix)'
         required: true
         type: string
-        default: '0.1.0'
+        default: '0.1.1'
 
 permissions:
   contents: read
