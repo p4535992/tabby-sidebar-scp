@@ -5,20 +5,20 @@ install it alongside [Better Sidebar](https://github.com/TooMuhtsh/tabby-better-
 **Better Sidebar is optional:** this plugin does not depend on it and never modifies
 its repository or requires a fork.
 
-### SCP next to Better Sidebar — SFTP-style toolbar (current `main`)
+### SCP next to Better Sidebar — SFTP-style toolbar (`0.1.1`)
 
 ![Actual SCP tab with the SFTP-style toolbar beside Profiles and SFTP](docs/screenshots/after-sftp-toolbar.webp)
 
 *Real screenshot from [GitHub Actions run #44311878384](https://github.com/p4535992/tabby-sidebar-scp/actions/runs/44311878384), using Tabby 1.0.238 and Better Sidebar 1.0.11. Cropped to the toolbar and file-list header; no UI controls were edited. The test VM has no remote SSH host selected, so this screenshot does not demonstrate a populated remote file listing.*
 
 
-> **Early release 0.1.0:** the SSH/SCP engine and redesigned SFTP-inspired
-> interface passed GitHub Actions VM tests with Tabby 1.0.238, both standalone
-> and with Better Sidebar 1.0.11. The optional Better Sidebar adapter uses
-> undocumented DOM selectors. Test with disposable files before production use;
-> manual drag-and-drop and cross-platform UI validation remain necessary.
+> **Release 0.1.1:** this version includes the SFTP-style seven-button SCP
+> toolbar and remote folder favorites. The SSH/SCP backend and panel mounting
+> passed GitHub Actions tests with Tabby 1.0.238, both standalone and with
+> Better Sidebar 1.0.11. The optional integration uses DOM selectors, not an
+> official API; manual drag-and-drop and cross-platform testing remain necessary.
 
-## SFTP-style toolbar (current main branch)
+## SFTP-style toolbar (included in 0.1.1)
 
 The SCP browser uses the **same toolbar order as Better Sidebar's SFTP panel**:
 favorite folders (star), edit remote path (pencil), refresh, filter, create
@@ -38,11 +38,9 @@ navigation, an up-level row, name/size/date sorting, and right-click actions.
 - **SSH settings:** local OpenSSH authentication is separate from Tabby's
   SFTP session, so SSH agent/keys and trusted host keys must be configured.
 
-**Version note:** these toolbar improvements are on `main` **after the
-`0.1.0` release**; the existing `0.1.0` download contains the preceding
-remote-first interface. A future numbered release will include the updates.
-The Better Sidebar integration continues to use an optional DOM adapter,
-not a supported integration API.
+**Version note:** the toolbar and remote favorites are included in GitHub
+release **`0.1.1`**, not the original `0.1.0` archive. Better Sidebar integration
+continues to use an optional DOM compatibility adapter rather than an official API.
 
 ## Where the SCP panel appears
 
@@ -127,11 +125,11 @@ strict filename check rejects the request. Downloading them requires a
 check). Use this only on a trusted SSH server. The advanced dialog exposes
 the same opt-in setting.
 
-## Download and install release 0.1.0
+## Download and install release 0.1.1
 
-The first GitHub release is tagged **`0.1.0`** — **not `v0.1.0`**.
-Download the compiled `tabby-sidebar-scp-0.1.0.tgz` package from
-[GitHub Releases](https://github.com/p4535992/tabby-sidebar-scp/releases/tag/0.1.0).
+The current GitHub release is tagged **`0.1.1`** — **not `v0.1.1`**.
+Download the compiled `tabby-sidebar-scp-0.1.1.tgz` package from
+[GitHub Releases](https://github.com/p4535992/tabby-sidebar-scp/releases/tag/0.1.1).
 Verify it against the accompanying `SHA256SUMS.txt`.
 
 Close Tabby completely and install the local archive into its plugin directory:
@@ -139,7 +137,7 @@ Close Tabby completely and install the local archive into its plugin directory:
 ```bash
 # Linux / macOS (substitute the actual downloaded path)
 npm install --prefix "$HOME/.config/tabby/plugins" \
-  "/path/to/tabby-sidebar-scp-0.1.0.tgz" --ignore-scripts
+  "/path/to/tabby-sidebar-scp-0.1.1.tgz" --ignore-scripts
 ```
 
 On Windows, use the Tabby plugins prefix `$env:APPDATA\tabby\plugins`
@@ -226,7 +224,7 @@ identifiers and titles are numeric only, such as `0.1.0`; a leading `v` is
 rejected. It builds, runs unit tests, packs a compiled `.tgz` and publishes a
 SHA-256 checksum. It does not publish to npm or modify Better Sidebar.
 
-See the [changelog](CHANGELOG.md) and [release notes](docs/releases/0.1.0.md).
+See the [changelog](CHANGELOG.md) and [0.1.1 release notes](docs/releases/0.1.1.md).
 
 ## License
 
