@@ -109,6 +109,36 @@ acceptance checklist are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 - `src/scp-dialog.component.ts` — advanced transfer dialog
 - `test/` — mocked unit tests (no real SSH access)
 
+## GitHub Actions test VM
+
+The repository includes a [GitHub Actions VM smoke test](.github/workflows/tabby-vm.yml)
+for **both supported layouts**, independent of any local Docker installation.
+
+- **Real SSH/SCP test:** an ephemeral Ubuntu VM starts its own OpenSSH server
+  on loopback, creates a temporary SSH key, uploads/downloads a file with
+  `scp -O`, compares SHA-256 checksums, and tests directory listing plus
+  remote rename. No production server or SSH secret is required.
+- **Real Tabby GUI test:** two independent Ubuntu VMs install the official
+  Tabby 1.0.238 Linux build, use Xvfb to run its Electron renderer, and check
+  the SCP DOM using Chrome DevTools Protocol.
+  - **Standalone:** checks that SCP creates its own sidebar without Better Sidebar.
+  - **Combined:** installs Better Sidebar 1.0.11, checks that the SCP tab is
+    added next to Profiles/SFTP and verifies tab activation and restoration.
+- **Evidence:** each GUI job saves screenshots, Electron logs and a JSON
+  result as downloadable **Actions artifacts**, including when a test fails.
+
+Go to **Actions → Tabby SCP / Ubuntu VM smoke tests → Run workflow** to run
+the workflow manually. The workflow also runs automatically on changes to
+the source, CI scripts or its workflow file on `main`.
+
+**Scope and limitations:** GitHub-hosted VMs are temporary and not interactive
+remote desktop sessions. The visual assertion checks renderer mounting and
+tab switching; full drag-and-drop gestures and visual fidelity still require
+manual UI verification. An actual SSH/SCP loopback transfer is verified
+automatically. Tabby and Better Sidebar versions are pinned for a repeatable
+test target; this does not certify all future releases. The GitHub workflow
+does not modify other repositories, create pull requests or upload SSH keys.
+
 ## License
 
 MIT.
