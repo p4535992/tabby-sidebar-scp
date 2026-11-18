@@ -109,6 +109,26 @@ Angular component and compatibility shim still need actual application QA.
       rejected login, and invalid paths.
 - [ ] Test with a real Tabby release on each supported desktop OS.
 
+## SFTP toolbar compatibility adapter
+
+SCP's own Angular component implements an SFTP-like toolbar with seven matching
+user actions: saved folders, path editing, refresh, filter, directory creation,
+file upload and folder upload. It does **not** import SFTPPanelComponent or its
+SFTP session; those APIs cannot transfer over the legacy SCP protocol.
+
+Saved remote folders are stored only in Tabby's localStorage under
+`tabby-sidebar-scp:remote-favorites:v1`, segregated by host, user and port.
+They do not modify Better Sidebar's configuration or SFTP favorites.
+
+Remote folder creation runs `mkdir -- <quoted-absolute-path>` over a new
+non-interactive SSH command, refusing an existing path; local folder creation
+uses Node fs. File/folder pickers use the optional `@electron/remote` API
+provided at runtime by Tabby and gracefully fall back to the Local view.
+
+Run the GitHub Actions smoke tests and inspect screenshots whenever the toolbar
+or the upstream Better Sidebar DOM changes. A successful DOM smoke test does
+not prove that a user completed a transfer in the actual GUI.
+
 ## Compatibility limitations
 
 Do **not** advertise this as a stable Better Sidebar integration until the
