@@ -224,6 +224,36 @@ identifiers and titles are numeric only, such as `0.1.0`; a leading `v` is
 rejected. It builds, runs unit tests, packs a compiled `.tgz` and publishes a
 SHA-256 checksum. It does not publish to npm or modify Better Sidebar.
 
+## Publishing to npm (optional)
+
+Tabby's **Settings → Plugins** page has two lists:
+
+- **Installed** plugins are read from Tabby's plugin directory
+  (`%APPDATA%\tabby\plugins` on Windows, `~/.config/tabby/plugins` on Linux,
+  `~/Library/Application Support/tabby/plugins` on macOS). A local `.tgz`
+  install appears here and needs no npm publication.
+- **Available** plugins come from the npm registry: Tabby's built-in
+  `tabby-plugin-manager` queries
+  `https://registry.npmjs.com/-/v1/search?text=keywords%3Atabby-plugin&size=250`
+  and keeps only packages whose name starts with `tabby-` or `terminus-`.
+
+This package already satisfies the discovery requirements: unscoped name
+starting with `tabby-`, the `tabby-plugin` keyword, a valid semantic version,
+and a compiled `dist/index.js`. The `prepack` script builds the bundle, so
+publishing from a clean checkout cannot ship an archive without it. The package
+is not in Tabby's plugin blacklist.
+
+```bash
+npm login
+npm publish
+```
+
+Publish a normal release to the `latest` dist-tag: Tabby lists the version
+advertised by that tag, so a `--tag next` prerelease is not shown. npm search
+indexing and Tabby's list refresh can take a few minutes; restart Tabby and
+search for `sidebar-scp` or `scp`. Installing from that list uses npm's
+Arborist into the plugin directory above, then Tabby restarts.
+
 See the [changelog](CHANGELOG.md) and [0.1.1 release notes](docs/releases/0.1.1.md).
 
 ## License

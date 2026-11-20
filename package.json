@@ -32,7 +32,8 @@
   "scripts": {
     "test": "node --test test/*.test.js",
     "build": "webpack --mode production",
-    "build:dev": "webpack --mode development"
+    "build:dev": "webpack --mode development",
+    "prepack": "npm run build"
   },
   "license": "MIT",
   "devDependencies": {
