@@ -18,7 +18,7 @@
   "main": "dist/index.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/p4535992/tabby-sidebar-scp.git"
+    "url": "git+https://github.com/p4535992/tabby-sidebar-scp.git"
   },
   "homepage": "https://github.com/p4535992/tabby-sidebar-scp#readme",
   "bugs": {
