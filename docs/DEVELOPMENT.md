@@ -65,6 +65,8 @@ selectors, the shim may require an update.
 | File | Role |
 | --- | --- |
 | `src/index.ts` | Angular plugin module |
+| `src/config.ts` | Config provider registering the `scpSidebar.enabled` default |
+| `src/settings.component.ts` / `src/settings.provider.ts` | Tabby Settings entry with the runtime enable switch |
 | `src/mount.service.ts` | Optional Better Sidebar adapter plus standalone placement |
 | `src/scp-browser.component.ts` | SFTP-inspired remote-first, local and split views, drag/drop, transfers and moves |
 | `src/tabby-session.js` / `.d.ts` | Active SSH tab detection, split-aware, without importing tabby-ssh |
@@ -106,6 +108,11 @@ Angular component and compatibility shim still need actual application QA.
       Better Sidebar tree, active sessions, transfers or SFTP view state.
 - [ ] Disable/re-enable Better Sidebar at runtime and confirm that SCP remains
       usable and does not duplicate its header tab.
+- [ ] Open **Settings → SCP Sidebar**, turn the switch off and confirm that the
+      SCP tab and panel disappear immediately without a restart; turn it back on
+      and confirm that the panel returns and re-binds the active SSH session.
+- [ ] Set `scpSidebar.enabled: false` in the config file, save, and confirm the
+      panel stays hidden after a full restart.
 - [ ] Try Better Sidebar's right-docked SFTP placement.
 - [ ] Open an SSH tab and confirm the panel binds to it automatically: `SCP`
       badge, session name in the header, listing in the shell's directory.

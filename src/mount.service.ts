@@ -1,5 +1,5 @@
 import { ApplicationRef, ComponentRef, EnvironmentInjector, Injectable, OnDestroy, createComponent } from '@angular/core'
-import { AppService } from 'tabby-core'
+import { AppService, ConfigService } from 'tabby-core'
 import { ScpBrowserComponent } from './scp-browser.component'
 
 /**
@@ -19,6 +19,7 @@ export class ScpMountService implements OnDestroy {
     private betterHeader: HTMLElement | null = null
     private tab: HTMLAnchorElement | null = null
     private selected = false
+    private enabled = true
     private hidden = new Map<HTMLElement, { value: string; priority: string }>()
     private previousActive = new Map<Element, boolean>()
     private readonly onOtherTab = (event: Event): void => {
@@ -28,18 +29,50 @@ export class ScpMountService implements OnDestroy {
 
     constructor(
         private app: AppService,
+        private config: ConfigService,
         private application: ApplicationRef,
         private environment: EnvironmentInjector,
     ) {
         this.app.ready$.subscribe(() => {
+            this.enabled = this.readEnabled()
             this.sync()
             this.observer = new MutationObserver(() => this.schedule())
             this.observer.observe(document.body, { childList: true, subtree: true })
         })
+        // The Settings checkbox saves the config; react without a restart.
+        this.config.changed$.subscribe(() => this.applyConfig())
+    }
+
+    /** `scpSidebar.enabled` is true unless the user explicitly turned it off. */
+    private readEnabled(): boolean {
+        return this.config.store?.scpSidebar?.enabled !== false
+    }
+
+    private applyConfig(): void {
+        const enabled = this.readEnabled()
+        if (enabled === this.enabled) return
+        this.enabled = enabled
+        if (enabled) this.sync()
+        else this.unmount()
+    }
+
+    /** Remove the tab and the component instance; the observer stays idle while disabled. */
+    private unmount(): void {
+        if (this.timer) {
+            clearTimeout(this.timer)
+            this.timer = null
+        }
+        this.disconnectBetter()
+        if (this.ref) {
+            ;(this.ref.location.nativeElement as HTMLElement).remove()
+            this.application.detachView(this.ref.hostView)
+            this.ref.destroy()
+            this.ref = null
+        }
     }
 
     private schedule(): void {
-        if (this.timer) return
+        if (this.timer || !this.enabled) return
         this.timer = setTimeout(() => { this.timer = null; this.sync() }, 75)
     }
 
@@ -52,6 +85,7 @@ export class ScpMountService implements OnDestroy {
     }
 
     private sync(): void {
+        if (!this.enabled) return
         const header = document.querySelector<HTMLElement>('.sidebar-plus-content .view-mode-bar')
         const content = header?.parentElement ?? null
         const windowRow = document.querySelector<HTMLElement>('.window.h-100.d-flex')
@@ -163,14 +197,7 @@ export class ScpMountService implements OnDestroy {
     }
 
     ngOnDestroy(): void {
-        if (this.timer) clearTimeout(this.timer)
         this.observer?.disconnect()
-        this.disconnectBetter()
-        if (this.ref) {
-            ;(this.ref.location.nativeElement as HTMLElement).remove()
-            this.application.detachView(this.ref.hostView)
-            this.ref.destroy()
-            this.ref = null
-        }
+        this.unmount()
     }
 }

@@ -6,6 +6,9 @@ numeric semantic versions **without a `v` prefix**.
 ## [Unreleased]
 
 ### Added
+- A **SCP Sidebar** page in Tabby's Settings tab with an *Enable the SCP file
+  browser* switch (`scpSidebar.enabled`): the panel is removed or re-created at
+  runtime, without restarting Tabby or unloading the plugin.
 - Automatic binding to the focused SSH tab, split panes included: remote
   listings, folder creation, rename/move and recursive upload/download now run
   on that session, so Tabby's saved password or key is reused and no

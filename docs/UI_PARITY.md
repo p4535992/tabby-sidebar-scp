@@ -52,6 +52,9 @@ independent; no Better Sidebar files or internal Angular components are imported
 - **Move** within a filesystem preserves the existing confirmation behavior.
   Copying between local and remote keeps the original; it does not perform a
   destructive cross-host move.
+- **Settings → SCP Sidebar** holds the only global switch: turning *Enable the
+  SCP file browser* off removes the tab and the panel immediately, without a
+  restart, and turning it on restores it in the current placement.
 
 ## SFTP toolbar parity implemented on main
 

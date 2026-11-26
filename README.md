@@ -77,6 +77,21 @@ to standalone mode does not affect the SCP engine.
 This plugin does **not** use `BetterPanelContribution:<id>`, because that
 contract registers settings pages, not sidebar file-browser tabs.
 
+## Settings
+
+Tabby's **Settings** tab contains an **SCP Sidebar** entry with a single
+**Enable the SCP file browser** switch. It writes `scpSidebar.enabled` to
+Tabby's config and takes effect **immediately**: turning it off removes the SCP
+tab and destroys the panel without unloading the plugin or restarting Tabby;
+turning it back on re-creates the panel and re-binds the active SSH session.
+
+```yaml
+scpSidebar:
+    enabled: true
+```
+
+The same key can be edited in the config file; the panel follows the next save.
+
 ## File browser and operations
 
 **Remote is the default view**, styled after Better Sidebar's SFTP file
@@ -188,6 +203,8 @@ are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 ## Source layout
 
 - `src/index.ts` — independent Tabby plugin entry point
+- `src/config.ts` — `scpSidebar.enabled` default registered with Tabby's config
+- `src/settings.component.ts` / `src/settings.provider.ts` — Settings tab entry with the runtime switch
 - `src/mount.service.ts` — optional Better Sidebar tab and standalone fallback
 - `src/scp-browser.component.ts` — remote-first SFTP-inspired file browser
 - `src/tabby-session.js` — active SSH tab detection (split-aware, no tabby-ssh import)

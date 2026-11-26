@@ -43,6 +43,7 @@
     "@ng-bootstrap/ng-bootstrap": "^14.2.0",
     "@types/node": "^18.19.0",
     "tabby-core": "^1.0.231-nightly.0",
+    "tabby-settings": "^1.0.231-nightly.0",
     "ts-loader": "^9.4.0",
     "typescript": "^4.9.5",
     "webpack": "^5.24.4",
