@@ -39,16 +39,25 @@ selectors, the shim may require an update.
   `test ! -e && test ! -L && mv --` command. Local rename/move uses Node
   `fs.promises.rename` and an existence precheck. These checks can race;
   they are not atomic no-clobber guarantees.
-- Copy between local and remote uses **legacy SCP** (`scp -O`), never silently
-  replaces SCP with SFTP.
+- Copy between local and remote uses the bound SSH session and speaks the
+  **legacy SCP protocol** (`scp -t` / `scp -f`) on an exec channel; with no
+  session open it falls back to a local **`scp -O`** process. Neither path can
+  silently switch to SFTP.
 - The default SCP view shows one remote file list, SFTP-style, with filter,
   sorting and Name / Size / Modified columns. Switch to Local or Split for transfers.
 - Dragging entries between panes copies; dragging into a directory within a
   pane moves. **A cross-pane copy never deletes its source.**
 - There is explicit user confirmation before transfers and moves.
-- All spawned commands use `shell: false` on the local machine.
-- SSH host-key checking stays strict and authentication is noninteractive.
-- No Tabby saved credentials or already-open SSH sessions are accessed.
+- Session mode spawns no local process: it opens exec channels on the focused
+  SSH tab's authenticated connection, so Tabby's saved password/key is used
+  without being read or copied by this plugin.
+- The channel API exposes no exit status, so remote commands report failures on
+  stderr and the move template prints an explicit message when it refuses to
+  overwrite. A command that failed without writing to stderr would be reported
+  as success.
+- In manual fallback all spawned commands use `shell: false` on the local
+  machine, SSH host-key checking stays strict and authentication is
+  noninteractive.
 - `ScpBrowserComponent` owns the transfer task and cancels it on destruction.
 
 ## Sources
@@ -58,7 +67,9 @@ selectors, the shim may require an update.
 | `src/index.ts` | Angular plugin module |
 | `src/mount.service.ts` | Optional Better Sidebar adapter plus standalone placement |
 | `src/scp-browser.component.ts` | SFTP-inspired remote-first, local and split views, drag/drop, transfers and moves |
-| `src/scp-browser.js` / `.d.ts` | Local/remote browsing, SSH movement and TypeScript types |
+| `src/tabby-session.js` / `.d.ts` | Active SSH tab detection, split-aware, without importing tabby-ssh |
+| `src/scp-session.js` / `.d.ts` | Remote commands and SCP transfers over the bound SSH session |
+| `src/scp-browser.js` / `.d.ts` | Local/remote browsing, SSH movement and TypeScript types (manual fallback) |
 | `src/scp-core.js` / `.d.ts` | SCP argument construction, path validation, transfer lifecycle |
 | `src/scp-dialog.component.ts` | Advanced transfer dialog |
 | `test/*.test.js` | Mocked backend unit tests |
@@ -96,7 +107,12 @@ Angular component and compatibility shim still need actual application QA.
 - [ ] Disable/re-enable Better Sidebar at runtime and confirm that SCP remains
       usable and does not duplicate its header tab.
 - [ ] Try Better Sidebar's right-docked SFTP placement.
-- [ ] Enter an SSH-config alias, a configured key and a custom port.
+- [ ] Open an SSH tab and confirm the panel binds to it automatically: `SCP`
+      badge, session name in the header, listing in the shell's directory.
+- [ ] Switch to another SSH tab and to a split pane; confirm the binding follows.
+- [ ] Disconnect the session and confirm the panel reports no session, then
+      reconnect and confirm it re-binds without another tab switch.
+- [ ] Enter an SSH-config alias, a configured key and a custom port (fallback).
 - [ ] Verify remote-first UI, path bar, columns, hidden files, filter, sort,
       context menu, collapsed connection settings and Local/Split controls.
 - [ ] Browse local/remote folders, including spaces and apostrophes.
@@ -113,15 +129,18 @@ Angular component and compatibility shim still need actual application QA.
 
 SCP's own Angular component implements an SFTP-like toolbar with seven matching
 user actions: saved folders, path editing, refresh, filter, directory creation,
-file upload and folder upload. It does **not** import SFTPPanelComponent or its
-SFTP session; those APIs cannot transfer over the legacy SCP protocol.
+file upload and folder upload. It does **not** import SFTPPanelComponent: it
+binds to the focused SSH tab and opens exec channels on that session's SSH
+client directly, so a second copy of tabby-ssh is never required and no SFTP
+subsystem is involved.
 
 Saved remote folders are stored only in Tabby's localStorage under
 `tabby-sidebar-scp:remote-favorites:v1`, segregated by host, user and port.
 They do not modify Better Sidebar's configuration or SFTP favorites.
 
 Remote folder creation runs `mkdir -- <quoted-absolute-path>` over a new
-non-interactive SSH command, refusing an existing path; local folder creation
+non-interactive SSH command in manual fallback, and over an exec channel in
+session mode, refusing an existing path; local folder creation
 uses Node fs. File/folder pickers use the optional `@electron/remote` API
 provided at runtime by Tabby and gracefully fall back to the Local view.
 

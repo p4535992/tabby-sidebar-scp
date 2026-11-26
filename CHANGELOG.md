@@ -3,6 +3,28 @@
 All notable changes to this project are documented here. Release identifiers are
 numeric semantic versions **without a `v` prefix**.
 
+## [Unreleased]
+
+### Added
+- Automatic binding to the focused SSH tab, split panes included: remote
+  listings, folder creation, rename/move and recursive upload/download now run
+  on that session, so Tabby's saved password or key is reused and no
+  host/user/port/key has to be entered again.
+- Transfers speak the **legacy SCP protocol** (`scp -t` / `scp -f`) on an exec
+  channel of the bound connection: no SFTP subsystem is needed on the server and
+  no local `scp`/`ssh` process is started.
+- Session bar shows the bound tab; the badge reads `SCP` with a tooltip that
+  distinguishes the session path from the local OpenSSH client, and the initial
+  remote directory is the shell's reported working directory when available.
+
+### Changed
+- The local OpenSSH `scp -O` path is now an explicit manual fallback, used only
+  while no SSH session is open.
+- Remote folder favorites are keyed by the bound session's host/user/port.
+- The remote move command now reports a refused overwrite on stderr, so the
+  session path (which has no exit status) surfaces the same error as the manual
+  path.
+
 ## [0.1.1] - 2026-11-18
 
 Second GitHub release, packaging the SFTP-style SCP sidebar improvements.

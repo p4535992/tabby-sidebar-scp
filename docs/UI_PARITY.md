@@ -70,9 +70,9 @@ template (`src/components/sftpBrowser.component.pug` and its stylesheet):
 | Sortable columns / parent row | Remote file table and a `..` up-level row |
 
 This adapts the **interface conventions**, not Better Sidebar's Angular SFTP
-component, which depends on Tabby's SFTP session APIs. SCP remains independently
-installable, and uses local SSH keys/agent credentials rather than passwords
-saved in Tabby.
+component. Both now read the same Tabby SSH session: the SCP pane binds to the
+focused SSH tab and runs SCP traffic on it, so Tabby's saved password or key is
+reused. The manual `scp -O` path stays available when no SSH session is open.
 
 Native file dialogs depend on `@electron/remote` being exposed by the installed
 Tabby runtime; if it is unavailable, use Local view instead. SCP drag-out to
@@ -93,11 +93,14 @@ component. There is no supported API that shares that component with another
 plugin. The optional Better Sidebar tab injection remains a compatibility
 adapter and must be verified whenever Better Sidebar changes its DOM.
 
-The SCP plugin uses local OpenSSH `scp -O` for transfers and SSH/GNU find for
-remote file listings. It does not reuse SFTP channels, an active Tabby SSH
-session, or Tabby-stored passwords. Remote legacy SCP downloads with complex
-filenames retain the existing explicit `scp -T` confirmation rule. No new
-file-editing, bookmarks or native OS drag-out behavior is implied by the UI.
+The plugin binds to the focused SSH tab (split panes included) and performs
+listings, moves and recursive transfers through that session with the legacy
+SCP protocol, with no local process and no extra credentials. When no SSH
+session is open it
+falls back to local OpenSSH `scp -O` transfers and SSH/GNU find listings, which
+need their own key/agent and host-key setup. Remote legacy SCP downloads with
+complex filenames retain the existing explicit `scp -T` confirmation rule. No
+new file-editing, bookmarks or native OS drag-out behavior is implied by the UI.
 
 ## Validation
 

@@ -5,6 +5,14 @@ install it alongside [Better Sidebar](https://github.com/TooMuhtsh/tabby-better-
 **Better Sidebar is optional:** this plugin does not depend on it and never modifies
 its repository or requires a fork.
 
+The remote pane follows the **active SSH tab**: listings, uploads, downloads,
+renames and folder creation travel over that session as **SCP** traffic, so the
+operator does not have to enter host, user, port or key again. Transfers speak
+the legacy SCP protocol (`scp -t` / `scp -f`) on an exec channel of the
+authenticated connection: no SFTP subsystem is required on the server. When no
+SSH session is open, the original standalone `scp -O` mode remains available as
+a manual fallback.
+
 ### SCP next to Better Sidebar — SFTP-style toolbar (`0.1.1`)
 
 ![Actual SCP tab with the SFTP-style toolbar beside Profiles and SFTP](docs/screenshots/after-sftp-toolbar.webp)
@@ -35,8 +43,9 @@ navigation, an up-level row, name/size/date sorting, and right-click actions.
   If that picker is unavailable, switch to Local view to choose the source.
 - **Filter / view options:** filter is initially collapsed; Local and Split
   remain available for copying and dragging files.
-- **SSH settings:** local OpenSSH authentication is separate from Tabby's
-  SFTP session, so SSH agent/keys and trusted host keys must be configured.
+- **SSH settings:** only needed when no SSH session is open. With a live SSH
+  tab the panel reuses Tabby's authenticated session; otherwise it falls back
+  to the local OpenSSH client, which needs agent/keys and trusted host keys.
 
 **Version note:** the toolbar and remote favorites are included in GitHub
 release **`0.1.1`**, not the original `0.1.0` archive. Better Sidebar integration
@@ -70,10 +79,17 @@ contract registers settings pages, not sidebar file-browser tabs.
 
 ## File browser and operations
 
-**Remote is the default SCP view**, styled after Better Sidebar's SFTP file
-browser. A compact header shows the SSH connection, toolbar, editable path,
-file filter and sortable **Name / Size / Date / Perm.** columns. Expand the SSH
-settings when choosing a host, user, port or identity key.
+**Remote is the default view**, styled after Better Sidebar's SFTP file
+browser. A compact header shows the bound SSH session (or the manual host),
+toolbar, editable path, file filter and sortable **Name / Size / Date / Perm.**
+columns.
+
+**Session binding.** The panel follows the focused SSH tab, including panes
+inside a split tab, and starts in the shell's working directory when the server
+reports it. The badge always reads `SCP`; its tooltip states whether the traffic
+runs on the bound Tabby session or through the local OpenSSH client. Switching
+to a non-SSH tab releases the binding; switching back re-binds and reloads the
+listing. A reconnect on the same tab is followed automatically.
 
 Choose **Remote**, **Local**, or **Split** to switch between the remote browser,
 local browser and two-pane transfer view. The same SCP interface is used
@@ -83,8 +99,10 @@ standalone and when Better Sidebar supplies the `Profiles | SFTP | SCP` tabs.
   hidden-file toggle, filtering and sort controls.
 - **Local:** inspect local files and select uploads.
 - **Split:** drag between panes to copy or onto a folder in the same pane to move.
-- **Upload / Download:** copy the selected file or directory with legacy
-  `scp -O`. An upload without a local selection opens the Local view.
+- **Upload / Download:** copy the selected file or directory through the bound
+  session with the SCP protocol (recursively for folders), or with legacy
+  `scp -O` in manual fallback. An upload without a local selection opens the
+  Local view.
 - **Rename:** move or rename the selected file within its filesystem, after
   confirmation. **Right-click** on an entry for open/copy/rename actions.
 - **Advanced transfer:** explicit source/destination paths, recursion,
@@ -102,18 +120,26 @@ there is still a possible overwrite race, so avoid concurrent modifications.
 ### Requirements
 
 - Compatible Tabby plugin runtime (target: Tabby 1.0.231+).
-- A local OpenSSH client with **`ssh`** and **`scp`** binaries in PATH.
-- `scp` must support `-O` (force **legacy SCP** protocol, not SFTP); the
-  SSH server must support the legacy protocol.
-- Remote browser requires a POSIX shell and **GNU `find`** (uses `-printf`,
-  `-mindepth`, `-maxdepth`). Remote moves require `mv` with `--` support.
-- Working noninteractive SSH key/agent authentication and a trusted host key
-  in `known_hosts`. Saved Tabby passwords or its open SSH sessions are not reused.
+- **Session mode:** an open SSH tab. Transfers run the remote `scp -t` / `scp -f`
+  command on an exec channel of that connection, so the server needs `scp` but
+  **no SFTP subsystem**. Tabby's saved password or key is reused; no further
+  configuration is required.
+- **Session mode:** the same POSIX shell requirements as the manual path, because
+  listing, `mkdir` and `mv` run as remote commands: **GNU `find`** (`-printf`,
+  `-mindepth`, `-maxdepth`) and `mv --`.
+- **Manual fallback only:** a local OpenSSH client with **`ssh`** and **`scp`**
+  in PATH, `scp -O` support (legacy protocol), noninteractive key/agent
+  authentication and a trusted host key in `known_hosts`.
+- **Manual fallback only:** a POSIX shell with **GNU `find`** (`-printf`,
+  `-mindepth`, `-maxdepth`) for listings and `mv --` for remote moves.
 - Remote directories are absolute POSIX paths, beginning with `/`.
 - Local filesystem operations use the OS running Tabby. Symbolic links are
   displayed as links; avoid dragging them until their behavior is verified.
 
-**Security:** commands are executed with `shell: false` on the local machine.
+**Security:** in session mode no local process is spawned: files travel as SCP
+traffic over Tabby's already authenticated connection, and the remote command
+text is built from fixed templates with quoted absolute paths. In manual
+fallback, commands are executed with `shell: false` on the local machine.
 Remote arguments are restricted/quoted and SSH host-key checks remain enabled.
 Neither file listings nor moves trigger arbitrary remote commands from user
 input; they invoke fixed `find` or `mv` templates with quoted paths. SCP
@@ -164,7 +190,9 @@ are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 - `src/index.ts` — independent Tabby plugin entry point
 - `src/mount.service.ts` — optional Better Sidebar tab and standalone fallback
 - `src/scp-browser.component.ts` — remote-first SFTP-inspired file browser
-- `src/scp-browser.js` — local listing and SSH remote listing/moves
+- `src/tabby-session.js` — active SSH tab detection (split-aware, no tabby-ssh import)
+- `src/scp-session.js` — remote commands and SCP transfers over that session
+- `src/scp-browser.js` — local listing and SSH remote listing/moves (manual fallback)
 - `src/scp-core.js` — validated legacy SCP transfers and cancellation
 - `src/scp-dialog.component.ts` — advanced transfer dialog
 - `test/` — mocked unit tests (no real SSH access)

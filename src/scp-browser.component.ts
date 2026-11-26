@@ -2,12 +2,18 @@ import { Component, HostListener, NgZone, OnDestroy, OnInit } from '@angular/cor
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import * as os from 'node:os'
 import * as path from 'node:path'
+import { AppService, BaseTabComponent, SplitTabComponent } from 'tabby-core'
 import { ScpTask, ScpTransferOptions, startScpTransfer } from './scp-core'
 import {
     ScpFileEntry, joinRemoteDirectory, parentRemoteDirectory,
     listLocalDirectory, listRemoteDirectory, moveLocalEntry, moveRemoteEntry,
     createRemoteDirectory, createLocalDirectory,
 } from './scp-browser'
+import {
+    createSessionDirectory, downloadSessionEntry, listSessionDirectory,
+    moveSessionEntry, uploadSessionEntry,
+} from './scp-session'
+import { SshTabLike, focusedTab, isLiveSshTab, isSshTab, sessionEndpoint, sessionLabel } from './tabby-session'
 import { ScpTransferDialogComponent } from './scp-dialog.component'
 import { readFavorites, toggleFavorite } from './scp-favorites'
 
@@ -24,10 +30,11 @@ type Side = 'local' | 'remote'
       </div>
       <div class="scp-browser-shell">
         <!-- Same visual hierarchy as Better Sidebar's SFTP view: session, toolbar, path, listing. -->
-        <div class="scp-session-bar" aria-label="Current SSH server">
-          <i class="fa fa-fw fas fa-server" aria-hidden="true"></i>
-          <span class="scp-session-name" [title]="host || 'Select an SSH host'">{{host || 'Select SSH host'}}</span>
-          <span class="scp-protocol-label">SCP</span>
+        <div class="scp-session-bar" aria-label="Current SSH session">
+          <i class="fa fa-fw fas" [class.fa-server]="!boundTab" [class.fa-plug]="!!boundTab" aria-hidden="true"></i>
+          <span class="scp-session-name" [title]="sessionTitle">{{sessionTitle}}</span>
+          <span class="scp-protocol-label"
+            [title]="boundTab ? 'SCP over the active Tabby SSH session' : 'SCP through the local OpenSSH client'">SCP</span>
           <button type="button" class="btn btn-link btn-sm scp-tool"
             [attr.aria-pressed]="showViewOptions" (click)="showViewOptions = !showViewOptions"
             title="Local and split file views" aria-label="Local and split file views">
@@ -55,7 +62,7 @@ type Side = 'local' | 'remote'
               (click)="goToRemotePath(crumb.path)">{{crumb.name}}</button>
           </div>
           <button type="button" class="btn btn-link btn-sm scp-tool scp-favorites-button"
-            [attr.aria-expanded]="favoritesMenuOpen" [disabled]="!host"
+            [attr.aria-expanded]="favoritesMenuOpen" [disabled]="!canBrowseRemote"
             (click)="toggleFavoritesMenu($event)" title="Favorite folders" aria-label="Favorite folders">
             <i class="fa fa-fw fa-star" [class.fas]="isCurrentFavorite" [class.far]="!isCurrentFavorite"
               aria-hidden="true"></i>
@@ -64,22 +71,22 @@ type Side = 'local' | 'remote'
             title="Type the path by hand" aria-label="Edit remote path">
             <i class="fa fa-fw fas fa-pen" aria-hidden="true"></i>
           </button>
-          <button type="button" class="btn btn-link btn-sm scp-tool" (click)="refreshRemote()" [disabled]="busy || !host"
+          <button type="button" class="btn btn-link btn-sm scp-tool" (click)="refreshRemote()" [disabled]="busy || !canBrowseRemote"
             title="Refresh" aria-label="Refresh remote files"><i class="fa fa-fw fas fa-sync-alt" aria-hidden="true"></i></button>
           <button type="button" class="btn btn-link btn-sm scp-tool" (click)="showFilter = !showFilter"
             [attr.aria-pressed]="showFilter" title="Filter the list" aria-label="Filter the list">
             <i class="fa fa-fw fas fa-filter" aria-hidden="true"></i>
           </button>
           <button type="button" class="btn btn-link btn-sm scp-tool" (click)="createFolder('remote')"
-            [disabled]="busy || !host" title="New remote folder" aria-label="New remote folder">
+            [disabled]="busy || !canBrowseRemote" title="New remote folder" aria-label="New remote folder">
             <i class="fa fa-fw fas fa-folder-plus" aria-hidden="true"></i>
           </button>
           <button type="button" class="btn btn-link btn-sm scp-tool" (click)="pickUploadFile()"
-            [disabled]="busy || !host" title="Send a file to the server" aria-label="Upload file">
+            [disabled]="busy || !canBrowseRemote" title="Send a file to the server" aria-label="Upload file">
             <i class="fa fa-fw fas fa-file-upload" aria-hidden="true"></i>
           </button>
           <button type="button" class="btn btn-link btn-sm scp-tool" (click)="pickUploadFolder()"
-            [disabled]="busy || !host" title="Send a folder to the server" aria-label="Upload folder">
+            [disabled]="busy || !canBrowseRemote" title="Send a folder to the server" aria-label="Upload folder">
             <i class="fa fa-fw fas fa-file-import" aria-hidden="true"></i>
           </button>
         </div>
@@ -101,6 +108,10 @@ type Side = 'local' | 'remote'
         </div>
         <!-- Connection settings are available but do not dominate the default file browser. -->
         <div class="scp-connection" *ngIf="showConnection" aria-label="SSH connection settings">
+          <p class="scp-connection-hint">
+            {{boundTab ? 'SCP runs on the active SSH session (' + sessionName + '). These settings only apply when no SSH session is open.'
+              : 'No SSH session is open: enter a host to use the local OpenSSH client as a fallback.'}}
+          </p>
           <label>Host / SSH alias
             <input class="form-control form-control-sm" [(ngModel)]="host" placeholder="example-host" (keyup.enter)="refreshRemote()">
           </label>
@@ -114,15 +125,15 @@ type Side = 'local' | 'remote'
             <input class="form-control form-control-sm" [(ngModel)]="identityFile" placeholder="Agent / SSH config" (keyup.enter)="refreshRemote()">
           </label>
           <div class="scp-connection-footer">
-            <button type="button" class="btn btn-sm btn-primary" [disabled]="!host || busy" (click)="connectRemote()">Load remote files</button>
-            <small>Uses local SSH keys, not Tabby's saved passwords.</small>
+            <button type="button" class="btn btn-sm btn-primary" [disabled]="!canBrowseRemote || busy" (click)="connectRemote()">Load remote files</button>
+            <small>Fallback only: uses local SSH keys, not Tabby's saved passwords.</small>
           </div>
         </div>
 
         <div class="scp-view-options" *ngIf="showViewOptions" aria-label="File browser views">
           <div class="scp-view-modes" role="group" aria-label="Choose file view">
             <button type="button" class="scp-mode-button" [class.active]="viewMode === 'remote'"
-              [attr.aria-pressed]="viewMode === 'remote'" (click)="setViewMode('remote')" title="Remote files, like SFTP">Remote</button>
+              [attr.aria-pressed]="viewMode === 'remote'" (click)="setViewMode('remote')" title="Remote files on the SSH session">Remote</button>
             <button type="button" class="scp-mode-button" [class.active]="viewMode === 'local'"
               [attr.aria-pressed]="viewMode === 'local'" (click)="setViewMode('local')" title="Local files">Local</button>
             <button type="button" class="scp-mode-button" [class.active]="viewMode === 'split'"
@@ -170,7 +181,7 @@ type Side = 'local' | 'remote'
                 <span class="scp-file-perm">{{entry.mode || "—"}}</span>
               </button>
               <p class="scp-empty" *ngIf="!loadingRemote && !displayedRemoteEntries.length">
-                {{!host ? 'Set an SSH host using the settings button, then refresh.' : remoteEntries.length ? 'No matching files' : 'No files yet — refresh to load.'}}
+                {{!canBrowseRemote ? 'Open an SSH session to browse its files, or set a host in the settings.' : remoteEntries.length ? 'No matching files' : 'No files yet — refresh to load.'}}
               </p>
             </div>
           </section>
@@ -213,9 +224,9 @@ type Side = 'local' | 'remote'
 
         <!-- The same compact footer for either view; actions follow selection. -->
         <div class="scp-command-bar" *ngIf="viewMode !== 'remote' || showViewOptions" aria-label="File actions">
-          <button type="button" class="scp-command-button" (click)="requestUpload()" [disabled]="busy || !host"
+          <button type="button" class="scp-command-button" (click)="requestUpload()" [disabled]="busy || !canBrowseRemote"
             title="Copy selected local file to remote directory"><i class="fas fa-upload" aria-hidden="true"></i> Upload</button>
-          <button type="button" class="scp-command-button" (click)="requestDownload()" [disabled]="busy || !selectedRemote || !host"
+          <button type="button" class="scp-command-button" (click)="requestDownload()" [disabled]="busy || !selectedRemote || !canBrowseRemote"
             title="Copy selected remote file to local directory"><i class="fas fa-download" aria-hidden="true"></i> Download</button>
           <button type="button" class="scp-command-button" (click)="renameEntry(activeSide)" [disabled]="busy || !activeEntry"
             title="Rename or move selected entry"><i class="fas fa-i-cursor" aria-hidden="true"></i> Rename</button>
@@ -262,6 +273,7 @@ type Side = 'local' | 'remote'
       .scp-connection input { width: 100%; min-width: 0; }
       .scp-connection-footer { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
       .scp-connection-footer small { opacity: .75; }
+      .scp-connection-hint { grid-column: 1 / -1; margin: 0; font-size: 11px; opacity: .8; }
       .scp-view-options { display: flex; justify-content: space-between; align-items: center; gap: 4px; border-bottom: 1px solid #8884; padding-bottom: 3px; }
       .scp-view-modes { display: flex; min-width: 0; gap: 2px; }
       .scp-mode-button { background: transparent; color: inherit; border: 0; padding: 4px 9px; border-radius: 4px; font-size: 12px; cursor: pointer; }
@@ -381,21 +393,142 @@ export class ScpBrowserComponent implements OnInit, OnDestroy {
     loadingRemote = false
     error = ''
     output = ''
-    status = 'Select a host, then refresh Remote.'
+    status = 'Open an SSH session to browse its files.'
     busy = false
+    /** SSH tab whose session supplies the remote file operations, when any. */
+    boundTab: SshTabLike | null = null
+    sessionName = ''
+    private sessionSubscriptions: { unsubscribe(): void }[] = []
+    private splitFocusSubscription: { unsubscribe(): void } | null = null
+    private tabSessionSubscription: { unsubscribe(): void } | null = null
+    private watchedTab: BaseTabComponent | null = null
+    private sessionSyncTimer: ReturnType<typeof setTimeout> | null = null
+    private cancelRequested = false
     private task: ScpTask | null = null
     private localRequest = 0
     private remoteRequest = 0
     private destroyed = false
 
-    constructor(private zone: NgZone, private modal: NgbModal) {}
+    constructor(private zone: NgZone, private modal: NgbModal, private app: AppService) {}
 
-    ngOnInit(): void { void this.refreshLocal() }
+    ngOnInit(): void {
+        void this.refreshLocal()
+        this.watchActiveSession()
+    }
+
     ngOnDestroy(): void {
         this.destroyed = true
         this.localRequest++
         this.remoteRequest++
+        this.cancelRequested = true
+        if (this.sessionSyncTimer) clearTimeout(this.sessionSyncTimer)
+        for (const subscription of this.sessionSubscriptions) subscription.unsubscribe()
+        this.sessionSubscriptions = []
+        this.splitFocusSubscription?.unsubscribe()
+        this.splitFocusSubscription = null
+        this.tabSessionSubscription?.unsubscribe()
+        this.tabSessionSubscription = null
         this.task?.cancel()
+    }
+
+    /** True when remote files can be listed: live session first, manual host as fallback. */
+    get canBrowseRemote(): boolean {
+        return !!this.boundTab || !!this.host.trim()
+    }
+
+    get sessionTitle(): string {
+        if (this.boundTab) return this.sessionName || sessionEndpoint(this.boundTab) || 'SSH session'
+        return this.host.trim() || 'No SSH session'
+    }
+
+    /** Follow the operator across tabs and split panes, like Better Sidebar's SFTP view. */
+    private watchActiveSession(): void {
+        this.sessionSubscriptions.push(
+            this.app.activeTabChange$.subscribe(() => this.scheduleSessionSync()),
+            this.app.tabsChanged$.subscribe(() => this.scheduleSessionSync()),
+        )
+        this.syncSession()
+    }
+
+    private scheduleSessionSync(): void {
+        if (this.sessionSyncTimer) return
+        this.sessionSyncTimer = setTimeout(() => {
+            this.sessionSyncTimer = null
+            this.syncSession()
+        }, 0)
+    }
+
+    private syncSession(): void {
+        this.watchSplitFocus()
+        const focused = focusedTab(this.app)
+        this.watchTabSession(focused)
+        const tab = isLiveSshTab(focused) ? focused : null
+        if (tab === this.boundTab) {
+            if (tab) this.sessionName = sessionLabel(tab)
+            return
+        }
+        void this.bindSession(tab)
+    }
+
+    /**
+     * Follow the focused SSH tab's session lifecycle even before it is live, so
+     * a reconnect on the same tab re-binds without another tab switch.
+     */
+    private watchTabSession(tab: BaseTabComponent | null): void {
+        if (this.watchedTab === tab) return
+        this.watchedTab = tab
+        this.tabSessionSubscription?.unsubscribe()
+        this.tabSessionSubscription = null
+        if (tab && isSshTab(tab)) {
+            this.tabSessionSubscription = tab.sessionChanged$?.subscribe?.(() => this.scheduleSessionSync()) ?? null
+        }
+    }
+
+    private watchSplitFocus(): void {
+        this.splitFocusSubscription?.unsubscribe()
+        this.splitFocusSubscription = null
+        const tab = this.app.activeTab
+        if (tab instanceof SplitTabComponent) {
+            this.splitFocusSubscription = tab.focusChanged$.subscribe(() => this.scheduleSessionSync())
+        }
+    }
+
+    private async bindSession(tab: SshTabLike | null): Promise<void> {
+        this.boundTab = tab
+        this.sessionName = tab ? sessionLabel(tab) : ''
+        this.remoteError = ''
+        this.remoteEntries = []
+        this.selectedRemote = null
+        if (!tab) {
+            if (this.host.trim()) {
+                this.status = 'No SSH session — using the manual SCP host.'
+                void this.refreshRemote()
+            } else {
+                this.status = 'Open an SSH session to browse its files.'
+            }
+            return
+        }
+        this.status = `SCP on ${this.sessionName}`
+        const directory = await this.initialRemoteDirectory(tab)
+        if (this.destroyed || this.boundTab !== tab) return
+        this.remoteDirectory = directory
+        void this.refreshRemote()
+    }
+
+    /** Start in the shell's working directory when the server reports it. */
+    private async initialRemoteDirectory(tab: SshTabLike): Promise<string> {
+        try {
+            const cwd = await tab.session?.getWorkingDirectory?.()
+            if (typeof cwd === 'string' && cwd.startsWith('/')) return cwd
+        } catch { /* Not all servers report it; '/' is always valid. */ }
+        return '/'
+    }
+
+    /** The bound tab, verified again so a stale reference never opens a channel. */
+    private requireSessionTab(): SshTabLike {
+        const tab = this.boundTab
+        if (!tab || !isLiveSshTab(tab)) throw new Error('The SSH session is no longer available')
+        return tab
     }
 
 
@@ -426,7 +559,7 @@ export class ScpBrowserComponent implements OnInit, OnDestroy {
     }
 
     get favorites(): string[] {
-        try { return readFavorites(window.localStorage, this.connection) }
+        try { return readFavorites(window.localStorage, this.favoritesConnection) }
         catch { return [] }
     }
 
@@ -441,7 +574,7 @@ export class ScpBrowserComponent implements OnInit, OnDestroy {
     }
 
     private changeFavorite(folder: string): void {
-        try { toggleFavorite(window.localStorage, this.connection, folder) }
+        try { toggleFavorite(window.localStorage, this.favoritesConnection, folder) }
         catch (error: unknown) { this.error = this.message(error) }
     }
 
@@ -486,7 +619,7 @@ export class ScpBrowserComponent implements OnInit, OnDestroy {
     async pickUploadFolder(): Promise<void> { await this.pickUpload(true) }
 
     private async pickUpload(isFolder: boolean): Promise<void> {
-        if (this.busy || !this.host.trim()) {
+        if (this.busy || !this.canBrowseRemote) {
             this.showConnection = true
             return
         }
@@ -519,7 +652,7 @@ export class ScpBrowserComponent implements OnInit, OnDestroy {
     }
 
     async createFolder(side: Side): Promise<void> {
-        if (this.busy || (side === 'remote' && !this.host.trim())) return
+        if (this.busy || (side === 'remote' && !this.canBrowseRemote)) return
         const name = window.prompt(side === 'remote' ? 'New remote folder name' : 'New local folder name')
         if (!name) return
         if (name === '.' || name === '..' || /[\/\\\x00-\x1f\x7f]/.test(name)) {
@@ -531,7 +664,9 @@ export class ScpBrowserComponent implements OnInit, OnDestroy {
         this.status = 'Creating folder…'
         try {
             if (side === 'remote') {
-                await createRemoteDirectory(this.connection, joinRemoteDirectory(this.remoteDirectory, name))
+                const destination = joinRemoteDirectory(this.remoteDirectory, name)
+                if (this.boundTab) await createSessionDirectory(this.requireSessionTab(), destination)
+                else await createRemoteDirectory(this.connection, destination)
             } else {
                 await createLocalDirectory(path.join(this.localDirectory, name))
             }
@@ -617,7 +752,6 @@ export class ScpBrowserComponent implements OnInit, OnDestroy {
     }
 
     connectRemote(): void {
-        if (!this.host.trim()) return
         this.showConnection = false
         this.setViewMode('remote')
         void this.refreshRemote()
@@ -679,6 +813,19 @@ export class ScpBrowserComponent implements OnInit, OnDestroy {
         }
     }
 
+    /** Favorites are keyed per server: the bound session supplies host/user/port. */
+    private get favoritesConnection(): ScpTransferOptions {
+        if (!this.boundTab) return this.connection
+        const options = this.boundTab.profile?.options ?? {}
+        return {
+            ...this.connection,
+            host: options.host || this.sessionName || this.boundTab.title || 'ssh',
+            username: options.user || '',
+            port: options.port ?? '',
+            identityFile: '',
+        }
+    }
+
     async refreshLocal(): Promise<void> {
         const request = ++this.localRequest
         this.loadingLocal = true; this.localError = ''
@@ -699,10 +846,15 @@ export class ScpBrowserComponent implements OnInit, OnDestroy {
 
     async refreshRemote(): Promise<void> {
         const request = ++this.remoteRequest
-        if (!this.host.trim()) { this.remoteError = 'Enter an SSH host first'; return }
+        if (!this.canBrowseRemote) {
+            this.remoteError = 'Open an SSH session first, or set an SSH host in the connection settings.'
+            return
+        }
         this.loadingRemote = true; this.remoteError = ''
         try {
-            const listing = await listRemoteDirectory(this.connection, this.remoteDirectory)
+            const listing = this.boundTab
+                ? await listSessionDirectory(this.requireSessionTab(), this.remoteDirectory)
+                : await listRemoteDirectory(this.connection, this.remoteDirectory)
             this.zone.run(() => {
                 if (request !== this.remoteRequest || this.destroyed) return
                 this.remoteEntries = listing.entries
@@ -739,6 +891,10 @@ export class ScpBrowserComponent implements OnInit, OnDestroy {
             ? joinRemoteDirectory(destinationDirectory, entry.name)
             : path.join(destinationDirectory, entry.name)
         if (!window.confirm(`Copy ${source} to ${destination}?\nExisting files may be overwritten. The original is retained.`)) return
+        if (this.boundTab) {
+            void this.copyEntryOverSession(upload, entry, source, destination)
+            return
+        }
         const complexDownload = !upload && !/^\/[A-Za-z0-9_./-]+$/.test(source)
         if (complexDownload && !window.confirm(
             'Legacy SCP requires -T for this filename, disabling remote filename checks. Only proceed if you trust this SSH server. Continue?',
@@ -771,6 +927,47 @@ export class ScpBrowserComponent implements OnInit, OnDestroy {
             this.status = 'Unable to start SCP'
         }
     }
+    /** Transfer with the SCP protocol on the bound session: no local scp, no extra credentials. */
+    private async copyEntryOverSession(upload: boolean, entry: ScpFileEntry, source: string, destination: string): Promise<void> {
+        this.busy = true
+        this.error = ''
+        this.output = ''
+        this.cancelRequested = false
+        this.status = upload ? 'Uploading…' : 'Downloading…'
+        try {
+            const tab = this.requireSessionTab()
+            const options = {
+                recursive: entry.isDirectory,
+                isCancelled: () => this.cancelRequested || this.destroyed,
+                onProgress: (transferred: number, total?: number) => this.zone.run(() => {
+                    if (this.destroyed) return
+                    const totalText = total ? ` / ${this.sizeText(total)}` : ''
+                    this.status = `${upload ? 'Uploading' : 'Downloading'} ${entry.name} — ${this.sizeText(transferred)}${totalText}`
+                }),
+            }
+            if (upload) await uploadSessionEntry(tab, source, destination, options)
+            else await downloadSessionEntry(tab, source, destination, options)
+            this.zone.run(() => {
+                if (this.destroyed) return
+                this.status = upload ? 'Upload completed' : 'Download completed'
+                if (upload) void this.refreshRemote()
+                else void this.refreshLocal()
+            })
+        } catch (e: unknown) {
+            this.zone.run(() => {
+                if (this.destroyed) return
+                this.status = this.cancelRequested ? 'Cancelled' : 'Transfer failed'
+                if (!this.cancelRequested) this.error = this.message(e)
+            })
+        } finally {
+            this.zone.run(() => {
+                if (this.destroyed) return
+                this.busy = false
+                this.cancelRequested = false
+            })
+        }
+    }
+
 
     async renameEntry(side: Side): Promise<void> {
         if (this.busy) return
@@ -796,6 +993,7 @@ export class ScpBrowserComponent implements OnInit, OnDestroy {
         this.busy = true; this.error = ''; this.status = 'Moving…'
         try {
             if (side === 'local') await moveLocalEntry(from, to)
+            else if (this.boundTab) await moveSessionEntry(this.requireSessionTab(), from, to)
             else await moveRemoteEntry(this.connection, from, to)
             this.zone.run(() => {
                 this.status = 'Move completed'
@@ -836,6 +1034,9 @@ export class ScpBrowserComponent implements OnInit, OnDestroy {
     }
 
     openAdvanced(): void { this.modal.open(ScpTransferDialogComponent, { size: 'lg' }) }
-    cancel(): void { this.task?.cancel() }
+    cancel(): void {
+        this.cancelRequested = true
+        this.task?.cancel()
+    }
     private message(error: unknown): string { return error instanceof Error ? error.message : String(error) }
 }

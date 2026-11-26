@@ -35,29 +35,41 @@ function buildSshCommand(input, command) {
   return { executable: 'ssh', args };
 }
 
-function buildListCommand(input, directory) {
+/** Remote command text, shared by the local ssh path and the Tabby session path. */
+function listCommandText(directory) {
   const quotedDirectory = quoteRemotePath(directory);
   // GNU find emits type/name/size/mtime/mode with NUL records.
   // File names containing tabs or control characters remain unsupported.
-  const command = String.raw`LC_ALL=C find -- ${quotedDirectory} -mindepth 1 -maxdepth 1 -printf '%y\t%f\t%s\t%T@\t%m\0'`;
-  return buildSshCommand(input, command);
+  return String.raw`LC_ALL=C find -- ${quotedDirectory} -mindepth 1 -maxdepth 1 -printf '%y\t%f\t%s\t%T@\t%m\0'`;
 }
 
-function buildMoveCommand(input, from, to) {
+function buildListCommand(input, directory) {
+  return buildSshCommand(input, listCommandText(directory));
+}
+
+function moveCommandText(from, to) {
   const source = quoteRemotePath(from);
   const destination = quoteRemotePath(to);
   if (from === to || to.startsWith(from + '/')) {
     throw new ScpValidationError('Move destination must be different and outside source');
   }
   // Refuse overwrites by default. -L catches a dangling symlink at destination.
-  const command = `test ! -e ${destination} && test ! -L ${destination} && mv -- ${source} ${destination}`;
-  return buildSshCommand(input, command);
+  // The explicit message matters on the session path, which has no exit status.
+  return `test ! -e ${destination} && test ! -L ${destination} && mv -- ${source} ${destination}`
+    + ' || echo "Destination already exists or the move failed" >&2';
+}
+
+function buildMoveCommand(input, from, to) {
+  return buildSshCommand(input, moveCommandText(from, to));
+}
+
+function mkdirCommandText(directory) {
+  // Non-recursive mkdir refuses collisions; never overwrite another file.
+  return `mkdir -- ${quoteRemotePath(directory)}`;
 }
 
 function buildMkdirCommand(input, directory) {
-  const destination = quoteRemotePath(directory);
-  // Non-recursive mkdir refuses collisions; never overwrite another file.
-  return buildSshCommand(input, `mkdir -- ${destination}`);
+  return buildSshCommand(input, mkdirCommandText(directory));
 }
 
 function runSsh(input, command, dependencies = {}) {
@@ -189,6 +201,7 @@ async function moveLocalEntry(source, destination, fileSystem = fs) {
 
 module.exports = {
   buildSshCommand, buildListCommand, buildMoveCommand, buildMkdirCommand,
+  listCommandText, moveCommandText, mkdirCommandText,
   listLocalDirectory, listRemoteDirectory, moveLocalEntry, moveRemoteEntry,
   createLocalDirectory, createRemoteDirectory,
   parseRemoteEntries, joinRemoteDirectory, parentRemoteDirectory,
