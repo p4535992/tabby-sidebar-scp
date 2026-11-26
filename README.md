@@ -13,20 +13,21 @@ authenticated connection: no SFTP subsystem is required on the server. When no
 SSH session is open, the original standalone `scp -O` mode remains available as
 a manual fallback.
 
-### SCP next to Better Sidebar — SFTP-style toolbar (`0.1.1`)
+### SCP next to Better Sidebar — SFTP-style toolbar (since `0.1.1`)
 
 ![Actual SCP tab with the SFTP-style toolbar beside Profiles and SFTP](docs/screenshots/after-sftp-toolbar.webp)
 
 *Real screenshot from [GitHub Actions run #44311878384](https://github.com/p4535992/tabby-sidebar-scp/actions/runs/44311878384), using Tabby 1.0.238 and Better Sidebar 1.0.11. Cropped to the toolbar and file-list header; no UI controls were edited. The test VM has no remote SSH host selected, so this screenshot does not demonstrate a populated remote file listing.*
 
 
-> **Release 0.1.1:** this version includes the SFTP-style seven-button SCP
-> toolbar and remote folder favorites. The SSH/SCP backend and panel mounting
-> passed GitHub Actions tests with Tabby 1.0.238, both standalone and with
-> Better Sidebar 1.0.11. The optional integration uses DOM selectors, not an
+> **Release 0.1.2:** the remote pane now binds to the active SSH tab and runs
+> listings, folder creation, rename/move and recursive transfers with the legacy
+> SCP protocol on that connection — no SFTP subsystem and no extra credentials.
+> A **Settings → SCP Sidebar** switch enables or disables the panel at runtime.
+> The optional Better Sidebar integration still uses DOM selectors, not an
 > official API; manual drag-and-drop and cross-platform testing remain necessary.
 
-## SFTP-style toolbar (included in 0.1.1)
+## SFTP-style toolbar (since 0.1.1)
 
 The SCP browser uses the **same toolbar order as Better Sidebar's SFTP panel**:
 favorite folders (star), edit remote path (pencil), refresh, filter, create
@@ -47,9 +48,10 @@ navigation, an up-level row, name/size/date sorting, and right-click actions.
   tab the panel reuses Tabby's authenticated session; otherwise it falls back
   to the local OpenSSH client, which needs agent/keys and trusted host keys.
 
-**Version note:** the toolbar and remote favorites are included in GitHub
-release **`0.1.1`**, not the original `0.1.0` archive. Better Sidebar integration
-continues to use an optional DOM compatibility adapter rather than an official API.
+**Version note:** the toolbar and remote favorites arrived in **`0.1.1`**;
+session binding, the SCP-over-session transport and the runtime settings switch
+are in **`0.1.2`**. Better Sidebar integration continues to use an optional DOM
+compatibility adapter rather than an official API.
 
 ## Where the SCP panel appears
 
@@ -166,11 +168,11 @@ strict filename check rejects the request. Downloading them requires a
 check). Use this only on a trusted SSH server. The advanced dialog exposes
 the same opt-in setting.
 
-## Download and install release 0.1.1
+## Download and install release 0.1.2
 
-The current GitHub release is tagged **`0.1.1`** — **not `v0.1.1`**.
-Download the compiled `tabby-sidebar-scp-0.1.1.tgz` package from
-[GitHub Releases](https://github.com/p4535992/tabby-sidebar-scp/releases/tag/0.1.1).
+The current GitHub release is tagged **`0.1.2`** — **not `v0.1.2`**.
+Download the compiled `tabby-sidebar-scp-0.1.2.tgz` package from
+[GitHub Releases](https://github.com/p4535992/tabby-sidebar-scp/releases/tag/0.1.2).
 Verify it against the accompanying `SHA256SUMS.txt`.
 
 Close Tabby completely and install the local archive into its plugin directory:
@@ -178,7 +180,7 @@ Close Tabby completely and install the local archive into its plugin directory:
 ```bash
 # Linux / macOS (substitute the actual downloaded path)
 npm install --prefix "$HOME/.config/tabby/plugins" \
-  "/path/to/tabby-sidebar-scp-0.1.1.tgz" --ignore-scripts
+  "/path/to/tabby-sidebar-scp-0.1.2.tgz" --ignore-scripts
 ```
 
 On Windows, use the Tabby plugins prefix `$env:APPDATA\tabby\plugins`
@@ -299,7 +301,7 @@ indexing and Tabby's list refresh can take a few minutes; restart Tabby and
 search for `sidebar-scp` or `scp`. Installing from that list uses npm's
 Arborist into the plugin directory above, then Tabby restarts.
 
-See the [changelog](CHANGELOG.md) and [0.1.1 release notes](docs/releases/0.1.1.md).
+See the [changelog](CHANGELOG.md) and [0.1.2 release notes](docs/releases/0.1.2.md).
 
 ## License
 

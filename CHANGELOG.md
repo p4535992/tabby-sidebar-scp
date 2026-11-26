@@ -5,6 +5,8 @@ numeric semantic versions **without a `v` prefix**.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-26
+
 ### Added
 - A **SCP Sidebar** page in Tabby's Settings tab with an *Enable the SCP file
   browser* switch (`scpSidebar.enabled`): the panel is removed or re-created at
@@ -27,6 +29,8 @@ numeric semantic versions **without a `v` prefix**.
 - The remote move command now reports a refused overwrite on stderr, so the
   session path (which has no exit status) surfaces the same error as the manual
   path.
+
+See [0.1.2 release notes](docs/releases/0.1.2.md).
 
 ## [0.1.1] - 2026-11-18
 
